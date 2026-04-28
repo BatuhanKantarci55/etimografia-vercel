@@ -1,0 +1,107 @@
+[
+  {
+    "unit_number": 1,
+    "stage_number": 1,
+    "stage_name": "Başlangıç Noktası"
+  },
+  {
+    "unit_number": 1,
+    "stage_number": 2,
+    "stage_name": "Gelişim Hattı"
+  },
+  {
+    "unit_number": 1,
+    "stage_number": 3,
+    "stage_name": "Hazırlık Çalışması"
+  },
+  {
+    "unit_number": 2,
+    "stage_number": 1,
+    "stage_name": "Sınıf Ortamı"
+  },
+  {
+    "unit_number": 2,
+    "stage_number": 2,
+    "stage_name": "Türkçe"
+  },
+  {
+    "unit_number": 2,
+    "stage_number": 3,
+    "stage_name": "Biyoloji"
+  },
+  {
+    "unit_number": 3,
+    "stage_number": 1,
+    "stage_name": "Duygular"
+  },
+  {
+    "unit_number": 3,
+    "stage_number": 2,
+    "stage_name": "Bilinç"
+  },
+  {
+    "unit_number": 3,
+    "stage_number": 3,
+    "stage_name": "Düş"
+  },
+  {
+    "unit_number": 4,
+    "stage_number": 1,
+    "stage_name": "Coğrafya"
+  },
+  {
+    "unit_number": 4,
+    "stage_number": 2,
+    "stage_name": "Uzay"
+  },
+  {
+    "unit_number": 4,
+    "stage_number": 3,
+    "stage_name": "Gözlem"
+  },
+  {
+    "unit_number": 5,
+    "stage_number": 1,
+    "stage_name": "Ey Türk Gençliği"
+  },
+  {
+    "unit_number": 5,
+    "stage_number": 2,
+    "stage_name": "İmkan ve Şerait"
+  },
+  {
+    "unit_number": 5,
+    "stage_number": 3,
+    "stage_name": "Ey Türk İstikbalinin Evladı"
+  },
+  {
+    "unit_number": 6,
+    "stage_number": 1,
+    "stage_name": "Matematik"
+  },
+  {
+    "unit_number": 6,
+    "stage_number": 2,
+    "stage_name": "Geometri"
+  },
+  {
+    "unit_number": 6,
+    "stage_number": 3,
+    "stage_name": "Araç Gereç"
+  },
+  {
+    "unit_number": 7,
+    "stage_number": 1,
+    "stage_name": "Dava"
+  },
+  {
+    "unit_number": 7,
+    "stage_number": 2,
+    "stage_name": "Seçim"
+  },
+  {
+    "unit_number": 7,
+    "stage_number": 3,
+    "stage_name": "Toplum"
+  }
+]

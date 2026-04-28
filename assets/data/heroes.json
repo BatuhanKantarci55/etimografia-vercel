@@ -1,0 +1,166 @@
+{
+  "heroes": [
+    {
+      "name": "Sihirbaz",
+      "displayName": "Sihirbaz",
+      "description": "Bir şık silerek cevap bulma şansını artırır.",
+      "abilityName": "Bir Şık Silme",
+      "abilityDescription": "Kendi şık sayısını 3'e düşürür.",
+      "duration": 30,
+      "cooldown": null,
+      "maxUses": 1,
+      "guild": "wisdom",
+      "compatibleModes": ["multiple-choice"],
+      "effect": {
+        "type": "reduce_options",
+        "value": 1
+      }
+    },
+    {
+      "name": "Kahin",
+      "displayName": "Kahin",
+      "description": "Cevabın ilk 3 harfini gösterir.",
+      "abilityName": "İpucu Gösterme",
+      "abilityDescription": "Cevabın ilk 3 harfini gösterir.",
+      "duration": 15,
+      "cooldown": 60,
+      "maxUses": null,
+      "guild": "wisdom",
+      "compatibleModes": ["classic"],
+      "effect": {
+        "type": "show_hint",
+        "value": 3
+      }
+    },
+    {
+      "name": "Serap Ustası",
+      "displayName": "Serap Ustası",
+      "description": "Rakibin şıklarını 2 saniye bulanıklaştırır.",
+      "abilityName": "Şıkları Bulanıklaştırma",
+      "abilityDescription": "Rakibin her yeni soruda şıkları 2 saniye bulanık görür.",
+      "duration": 15,
+      "cooldown": null,
+      "maxUses": 1,
+      "guild": "war",
+      "compatibleModes": ["multiple-choice"],
+      "effect": {
+        "type": "blur_options",
+        "value": 2000
+      }
+    },
+    {
+      "name": "Zaman Bükücü",
+      "displayName": "Zaman Bükücü",
+      "description": "Rakibin 'Kontrol Et' butonuna 3 saniye gecikme ekler.",
+      "abilityName": "Zaman Harcatma",
+      "abilityDescription": "3 soru boyunca rakibin 'Kontrol Et' butonu 3 saniye geç tepki verir.",
+      "duration": null,
+      "cooldown": 60,
+      "maxUses": null,
+      "guild": "war",
+      "compatibleModes": ["classic"],
+      "effect": {
+        "type": "delay_submit",
+        "value": 3000,
+        "duration": 3
+      }
+    },
+    {
+      "name": "Samuray",
+      "displayName": "Samuray",
+      "description": "Rakibin şık sayısını 6'ya çıkarır.",
+      "abilityName": "Şıkları Arttırma",
+      "abilityDescription": "Rakibin şık sayısını 6'ya çıkarır.",
+      "duration": 15,
+      "cooldown": 60,
+      "maxUses": null,
+      "guild": "war",
+      "compatibleModes": ["multiple-choice"],
+      "effect": {
+        "type": "increase_options",
+        "value": 6
+      }
+    },
+    {
+      "name": "Zincirci",
+      "displayName": "Zincirci",
+      "description": "Rakibin her doğru cevapta sadece 1 puan kazanmasını sağlar.",
+      "abilityName": "Dolum Barına Zincir",
+      "abilityDescription": "Rakibin her doğru cevapta sadece 1 puan kazanmasını sağlar.",
+      "duration": 15,
+      "cooldown": 60,
+      "maxUses": null,
+      "guild": "war",
+      "compatibleModes": ["multiple-choice", "classic"],
+      "effect": {
+        "type": "reduce_points",
+        "value": 1
+      }
+    },
+    {
+      "name": "Havan Topçusu",
+      "displayName": "Havan Topçusu",
+      "description": "Rakibin kulesinden 1 parça yok eder.",
+      "abilityName": "Kule Yıkım",
+      "abilityDescription": "Rakibin kulesinden 1 parça yok eder.",
+      "duration": null,
+      "cooldown": 60,
+      "maxUses": null,
+      "guild": "structure",
+      "compatibleModes": ["multiple-choice", "classic"],
+      "effect": {
+        "type": "destroy_tower_piece",
+        "value": 1
+      }
+    },
+    {
+      "name": "Büyücü",
+      "displayName": "Büyücü",
+      "description": "İki şık silerek cevap bulma şansını artırır.",
+      "abilityName": "İki Şık Silme",
+      "abilityDescription": "Kendi şık sayısını 2'ye düşürür.",
+      "duration": 10,
+      "cooldown": 60,
+      "maxUses": null,
+      "guild": "wisdom",
+      "compatibleModes": ["multiple-choice"],
+      "effect": {
+        "type": "reduce_options",
+        "value": 2
+      }
+    },
+    {
+      "name": "İnşaatçı",
+      "displayName": "İnşaatçı",
+      "description": "Bar kapasitesini 25'e çıkarır, bar dolunca 2 kule birden kazanılır.",
+      "abilityName": "Kule Parçası Kazandırma",
+      "abilityDescription": "Bar kapasitesi 25'e çıkar, bar dolunca 2 kule birden kazanılır.",
+      "duration": 15,
+      "cooldown": 60,
+      "maxUses": null,
+      "guild": "structure",
+      "compatibleModes": ["multiple-choice"],
+      "effect": {
+        "type": "increase_bar_capacity",
+        "value": 25,
+        "bonus_pieces": 2
+      }
+    },
+    {
+      "name": "Vampir Lordu",
+      "displayName": "Vampir Lordu",
+      "description": "Rakip kule parçası kazandığında kendi barına +5 puan ekler.",
+      "abilityName": "Parazit",
+      "abilityDescription": "Rakip her kule parçası kazandığında kendi barına +5 puan eklenir.",
+      "duration": 30,
+      "cooldown": null,
+      "maxUses": 1,
+      "guild": "structure",
+      "compatibleModes": ["multiple-choice", "classic"],
+      "effect": {
+        "type": "parasite",
+        "value": 5
+      }
+    }
+  ]
+}

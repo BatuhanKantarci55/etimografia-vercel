@@ -1,59 +1,115 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/components/useColorScheme';
-
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
-}
+// app/_layout.tsx
+import * as NavigationBar from "expo-navigation-bar";
+import { Stack } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, Platform, StatusBar, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ArenaProvider } from "../contexts/ArenaContext";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { CommentProvider } from "../contexts/CommentContext";
+import { DailyStreakProvider } from "../contexts/DailyStreakContext";
+import { DuelProvider } from "../contexts/DuelContext";
+import { EducationProvider } from "../contexts/EducationContext";
+import { FollowProvider } from "../contexts/FollowContext";
+import { FontProvider, useFonts } from "../contexts/FontContext";
+import { GameModeProvider } from "../contexts/GameModeContext";
+import { HeroProvider } from "../contexts/HeroContext";
+import { LevelProvider } from "../contexts/LevelContext";
+import { MessageProvider } from "../contexts/MessageContext";
+import { PostProvider } from "../contexts/PostContext";
+import { PracticeProvider } from "../contexts/PracticeContext";
+import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { user, initialized } = useAuth();
+  const { fontsLoaded } = useFonts();
+  const { themeMode } = useTheme();
 
+  useEffect(() => {
+    const updateSystemBars = async () => {
+      if (Platform.OS === "android") {
+        try {
+          const navBarColor = themeMode === "dark" ? "#121212" : "#f5f5f5";
+          const buttonStyle = themeMode === "dark" ? "light" : "dark";
+
+          await NavigationBar.setBackgroundColorAsync(navBarColor);
+          await NavigationBar.setButtonStyleAsync(buttonStyle);
+        } catch (error) {
+          console.error("Navigation bar ayarlanırken hata:", error);
+        }
+      }
+
+      const statusBarStyle =
+        themeMode === "dark" ? "light-content" : "dark-content";
+      StatusBar.setBarStyle(statusBarStyle);
+      StatusBar.setBackgroundColor("transparent", true);
+    };
+
+    updateSystemBars();
+  }, [themeMode]);
+
+  if (!fontsLoaded || !initialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  // KOŞULLU RENDER'I KALDIRIYORUZ: Tüm stack'ler her zaman yüklü kalmalı.
+  // Yönlendirme işlemini AuthContext halledecek.
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="verify-email" />
+    </Stack>
+  );
+}
+
+function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <DailyStreakProvider>
+          <LevelProvider>
+            <FollowProvider>
+              <PostProvider>
+                <CommentProvider>
+                  <MessageProvider>
+                    <GameModeProvider>
+                      <PracticeProvider>
+                        <DuelProvider>
+                          <EducationProvider>
+                            <ArenaProvider>
+                              <HeroProvider>{children}</HeroProvider>
+                            </ArenaProvider>
+                          </EducationProvider>
+                        </DuelProvider>
+                      </PracticeProvider>
+                    </GameModeProvider>
+                  </MessageProvider>
+                </CommentProvider>
+              </PostProvider>
+            </FollowProvider>
+          </LevelProvider>
+        </DailyStreakProvider>
+      </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <FontProvider>
+          <Providers>
+            <RootLayoutNav />
+          </Providers>
+        </FontProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

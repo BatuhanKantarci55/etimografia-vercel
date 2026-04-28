@@ -2,16 +2,35 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+      "@/*": ["app/*"],
+      "@components/*": ["components/*"],
+      "@constants/*": ["constants/*"],
+      "@contexts/*": ["contexts/*"],
+      "@hooks/*": ["hooks/*"],
+      "@lib/*": ["lib/*"],
+      "@utils/*": ["utils/*"], // Eğer utils klasörünüz varsa
+      "@types/*": ["types/*"], // Eğer types klasörünüz varsa
+      "@assets/*": ["assets/*"] // Eğer assets klasörünüz varsa
+    },
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+    "app/**/*",
+    "components/**/*",
+    "constants/**/*", // Tüm constants dosyalarını dahil et
+    "contexts/**/*",
+    "hooks/**/*",
+    "lib/**/*",
+    "utils/**/*", // Eğer varsa
+    "types/**/*", // Eğer varsa
+    "contexts",
+    "hooks",
+    "lib"
+  ],
+  "exclude": ["node_modules"]
 }
