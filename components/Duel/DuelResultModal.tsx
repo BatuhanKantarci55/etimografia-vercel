@@ -32,7 +32,7 @@ export default function DuelResultModal({
   onClose,
 }: Props) {
   const { colors } = useTheme();
-  const { scale } = useResponsive();
+  const { scale, isDesktop } = useResponsive();
 
   let title = "";
   let icon: keyof typeof Ionicons.glyphMap = "remove";
@@ -98,6 +98,9 @@ export default function DuelResultModal({
     opponentResult,
   );
 
+  // DÜZELTME: Rakip adını dinamik olarak bulup atıyoruz
+  const opponentNameDisplay = isPlayer1 ? player2Name : player1Name;
+
   const handleHomePress = () => {
     onClose();
     setTimeout(() => {
@@ -113,7 +116,13 @@ export default function DuelResultModal({
       onRequestClose={handleHomePress}
     >
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+        <View
+          style={[
+            styles.modalContent,
+            { backgroundColor: colors.card },
+            isDesktop && { maxWidth: scale(400) },
+          ]}
+        >
           <Ionicons name={icon} size={scale(60)} color={iconColor} />
           <CustomText style={[styles.modalTitle, { color: colors.text }]}>
             {title}
@@ -251,7 +260,7 @@ export default function DuelResultModal({
               <CustomText
                 style={[styles.pointsLabel, { color: colors.text + "80" }]}
               >
-                {player2Name}:
+                {opponentNameDisplay}:
               </CustomText>
               <CustomText
                 style={[

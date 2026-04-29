@@ -48,7 +48,7 @@ export default function DuelSessionScreen() {
     endDuel,
     leaveDuel,
     clearActiveSession,
-  } = useDuel(); // DEĞİŞİKLİK: clearActiveSession hook'tan çekildi
+  } = useDuel();
   const { user } = useAuth();
 
   // Client tarafında tutulan state'ler
@@ -447,8 +447,7 @@ export default function DuelSessionScreen() {
 
     setMyAskedIds((prev) => [...prev, wordId]);
 
-    // DEĞİŞİKLİK: Burada setTimeout ile otomatik geçiş yapılıyordu (kaldırıldı).
-    // Artık kullanıcı "İleri" (veya klavye Enter) tuşuna basarak kendisi geçecek.
+    // Kullanıcı Enter/İleri ile geçecek
   };
 
   const handlePass = () => {
@@ -507,9 +506,7 @@ export default function DuelSessionScreen() {
     let winnerType: "player1" | "player2" | "draw" | null = null;
 
     if (myPieces > opponentPieces) {
-      winnerId = isPlayer1
-        ? activeSession.player1_id
-        : activeSession.player2_id;
+      winnerId = user?.id || null;
       winnerType = isPlayer1 ? "player1" : "player2";
     } else if (opponentPieces > myPieces) {
       winnerId = isPlayer1
@@ -554,7 +551,6 @@ export default function DuelSessionScreen() {
     initialLoadDone.current = false;
     router.replace("/(tabs)");
 
-    // DEĞİŞİKLİK: Ana sayfaya yönlendirildikten hemen sonra arkadaki session verisini temizle
     setTimeout(() => {
       clearActiveSession();
     }, 500);
@@ -568,7 +564,6 @@ export default function DuelSessionScreen() {
     initialLoadDone.current = false;
     router.replace("/(tabs)");
 
-    // DEĞİŞİKLİK: Ana sayfaya yönlendirildikten hemen sonra arkadaki session verisini temizle
     setTimeout(() => {
       clearActiveSession();
     }, 500);
@@ -789,12 +784,14 @@ export default function DuelSessionScreen() {
           </TouchableOpacity>
         </Modal>
 
+        {/* DÜZELTME: player1Pieces ve player2Pieces değerleri artık isPlayer1 durumuna göre %100 doğru iletilecek, 
+            Ayrıca gecikme veya eksik veri durumu önlenerek activeSession'dan direkt en son değerler çekildi */}
         <DuelResultModal
           visible={resultModalVisible}
           winner={winner}
           isPlayer1={isPlayer1}
-          player1Pieces={myPieces}
-          player2Pieces={opponentPieces}
+          player1Pieces={activeSession.player1_tower_pieces}
+          player2Pieces={activeSession.player2_tower_pieces}
           player1Name={activeSession.player1?.username || "Oyuncu 1"}
           player2Name={activeSession.player2?.username || "Oyuncu 2"}
           player1Points={player1Points}
