@@ -31,11 +31,10 @@ interface Word {
   difficulty_level: number;
 }
 
-// Oyun süresi (saniye)
 const GAME_DURATION = 120; // 2 dakika
-const FILL_BAR_CAPACITY = 15; // Dolum barı kapasitesi 15
-const TOWER_PIECES_TO_WIN = 10; // Kazanmak için gereken parça sayısı
-const COUNTDOWN_DURATION = 3; // Geri sayım süresi
+const FILL_BAR_CAPACITY = 15;
+const TOWER_PIECES_TO_WIN = 10;
+const COUNTDOWN_DURATION = 3;
 
 export default function DuelSessionScreen() {
   const { colors } = useTheme();
@@ -51,7 +50,6 @@ export default function DuelSessionScreen() {
   } = useDuel();
   const { user } = useAuth();
 
-  // Client tarafında tutulan state'ler
   const [myWordPool, setMyWordPool] = useState<Word[]>([]);
   const [myWordIndex, setMyWordIndex] = useState(0);
   const [myAskedIds, setMyAskedIds] = useState<number[]>([]);
@@ -61,7 +59,6 @@ export default function DuelSessionScreen() {
   const [gameTimeLeft, setGameTimeLeft] = useState(GAME_DURATION);
   const [gameStarted, setGameStarted] = useState(false);
 
-  // Parça state'leri
   const [myPieces, setMyPieces] = useState(0);
   const [opponentPieces, setOpponentPieces] = useState(0);
 
@@ -77,14 +74,17 @@ export default function DuelSessionScreen() {
   const [isPlayer2, setIsPlayer2] = useState(false);
   const [sessionFinished, setSessionFinished] = useState(false);
 
-  // Sonuç için state'ler
-  const [winner, setWinner] = useState<"player1" | "player2" | "draw" | null>(
-    null,
-  );
-  const [player1Points, setPlayer1Points] = useState(0);
-  const [player2Points, setPlayer2Points] = useState(0);
+  // Sonuç ekranı verileri
+  const [resultModalData, setResultModalData] = useState({
+    myResult: "draw" as "win" | "loss" | "draw",
+    myPieces: 0,
+    opponentPieces: 0,
+    myName: "",
+    opponentName: "",
+    myPoints: 0,
+    opponentPoints: 0,
+  });
 
-  // Animasyon için ayrı ref'ler
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const countdownAnim = useRef(new Animated.Value(0)).current;
   const initialLoadDone = useRef(false);
@@ -97,35 +97,27 @@ export default function DuelSessionScreen() {
   const isEndingGame = useRef(false);
 
   const isPlayer1 = user?.id === activeSession?.player1_id;
-
-  // Profil bilgileri
   const myProfile = isPlayer1 ? activeSession?.player1 : activeSession?.player2;
   const opponentProfile = isPlayer1
     ? activeSession?.player2
     : activeSession?.player1;
 
-  // Parça state'lerini activeSession'dan güncelle
   useEffect(() => {
-    if (activeSession) {
+    if (activeSession && !resultModalVisible) {
       setIsPlayer2(user?.id === activeSession.player2_id);
-
       const myCurrentPieces = isPlayer1
         ? activeSession.player1_tower_pieces
         : activeSession.player2_tower_pieces;
       const opponentCurrentPieces = isPlayer1
         ? activeSession.player2_tower_pieces
         : activeSession.player1_tower_pieces;
-
       setMyPieces(myCurrentPieces);
       setOpponentPieces(opponentCurrentPieces);
     }
-  }, [activeSession, user, isPlayer1]);
+  }, [activeSession, user, isPlayer1, resultModalVisible]);
 
-  // Kelime havuzunu oluştur
   useEffect(() => {
     if (activeSession && !initialLoadDone.current && !sessionFinished) {
-      console.log("📚 Kelime havuzu oluşturuluyor...");
-
       const filtered = wordsData.filter((w: Word) => {
         if (activeSession.difficulty && activeSession.difficulty.length > 0) {
           return activeSession.difficulty.includes(w.difficulty_level);
@@ -153,28 +145,22 @@ export default function DuelSessionScreen() {
     }
   }, [activeSession, sessionFinished]);
 
-  // Oyun başlangıcı ve geri sayım
   useEffect(() => {
     if (!activeSession || gameEnded || sessionFinished) return;
-
     if (
       activeSession.status === "ongoing" &&
       !gameStarted &&
       !countdownVisible
     ) {
-      console.log("⏱️ Geri sayım başlatılıyor...");
       setCountdownVisible(true);
       setCountdown(COUNTDOWN_DURATION);
 
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current);
-      }
-
+      if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
       const startTime = Date.now();
+
       const updateCountdown = () => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         const remaining = Math.max(0, COUNTDOWN_DURATION - elapsed);
-
         setCountdown(remaining);
 
         if (remaining > 0) {
@@ -183,7 +169,6 @@ export default function DuelSessionScreen() {
           setCountdownVisible(false);
           setGameStarted(true);
           setCanAnswer(true);
-
           gameStartTime.current = Date.now();
 
           if (timerRef.current) clearInterval(timerRef.current);
@@ -197,14 +182,10 @@ export default function DuelSessionScreen() {
           }, 1000);
         }
       };
-
       updateCountdown();
     }
-
     return () => {
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current);
-      }
+      if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -212,101 +193,35 @@ export default function DuelSessionScreen() {
     };
   }, [activeSession?.status, gameEnded, sessionFinished]);
 
-  // Session durumu değişikliklerini dinle - KARŞI TARAF oyunu bitirdiğinde
-  useEffect(() => {
-    if (!activeSession || gameEnded || sessionFinished) return;
-    if (isEndingGame.current) return;
-
-    if (activeSession.status === "finished" && !gameEnded) {
-      console.log("🏁 Karşı taraf oyunu bitirdi, biz de bitiriyoruz...");
-
-      let winnerType: "player1" | "player2" | "draw" | null = null;
-
-      if (activeSession.winner_id) {
-        if (activeSession.winner_id === activeSession.player1_id) {
-          winnerType = "player1";
-        } else {
-          winnerType = "player2";
-        }
-      } else {
-        winnerType = "draw";
-      }
-
-      const player1Pieces = activeSession.player1_tower_pieces;
-      const player2Pieces = activeSession.player2_tower_pieces;
-      const isPlayer1Winner =
-        activeSession.winner_id === activeSession.player1_id;
-      const isPlayer2Winner =
-        activeSession.winner_id === activeSession.player2_id;
-
-      const p1Points =
-        (isPlayer1Winner ? 30 : isPlayer2Winner ? -15 : 0) + player1Pieces * 1;
-      const p2Points =
-        (isPlayer2Winner ? 30 : isPlayer1Winner ? -15 : 0) + player2Pieces * 1;
-
-      setGameEnded(true);
-      setSessionFinished(true);
-      setCanAnswer(false);
-      setWinner(winnerType);
-      setPlayer1Points(p1Points);
-      setPlayer2Points(p2Points);
-      setResultModalVisible(true);
-
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
-
-      isEndingGame.current = true;
-    }
-  }, [
-    activeSession?.status,
-    activeSession?.winner_id,
-    activeSession?.player1_tower_pieces,
-    activeSession?.player2_tower_pieces,
-    gameEnded,
-    sessionFinished,
-  ]);
-
-  // Oyun bitiş kontrolü - kule parçaları için
+  // YEREL BİTİŞ KONTROLÜ
   useEffect(() => {
     if (!activeSession || gameEnded || sessionFinished) return;
     if (isEndingGame.current) return;
 
     if (
       myPieces >= TOWER_PIECES_TO_WIN ||
-      opponentPieces >= TOWER_PIECES_TO_WIN
+      opponentPieces >= TOWER_PIECES_TO_WIN ||
+      gameTimeLeft <= 0
     ) {
-      console.log(
-        `🏁 Kule tamamlandı - Ben: ${myPieces}, Rakip: ${opponentPieces}`,
-      );
       handleGameEnd();
     }
-  }, [myPieces, opponentPieces, gameEnded, sessionFinished]);
+  }, [myPieces, opponentPieces, gameTimeLeft, gameEnded, sessionFinished]);
 
-  // Süre bitiş kontrolü
+  // SUNUCU BİTİŞ KONTROLÜ: Rakip bitirdiyse
   useEffect(() => {
-    if (!activeSession || gameEnded || sessionFinished || !gameStarted) return;
-    if (isEndingGame.current) return;
+    if (!activeSession || gameEnded || sessionFinished) return;
 
-    if (gameTimeLeft <= 0) {
-      console.log("⏰ Süre doldu, oyun bitiriliyor...");
+    if (activeSession.status === "finished") {
       handleGameEnd();
     }
-  }, [gameTimeLeft, gameEnded, sessionFinished, gameStarted]);
+  }, [activeSession?.status, gameEnded, sessionFinished]);
 
-  // Yeni kelime yüklendiğinde hemen aktif et
   useEffect(() => {
     if (currentWord && gameStarted && !gameEnded && !sessionFinished) {
       setCanAnswer(true);
     }
   }, [currentWord, gameStarted, gameEnded, sessionFinished]);
 
-  // Geri sayım animasyonu
   useEffect(() => {
     if (countdownVisible && countdown > 0) {
       Animated.sequence([
@@ -327,7 +242,6 @@ export default function DuelSessionScreen() {
 
   const generateOptions = (word: Word) => {
     if (!activeSession) return;
-
     const isOldToNew = activeSession.direction === "old-to-new";
     const correct = isOldToNew ? word.new_turkish_word : word.old_turkish_word;
 
@@ -337,16 +251,16 @@ export default function DuelSessionScreen() {
 
     let wrongOptions;
     if (otherWords.length >= 3) {
-      const shuffled = [...otherWords].sort(() => Math.random() - 0.5);
-      wrongOptions = shuffled.slice(0, 3);
+      wrongOptions = [...otherWords]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3);
     } else {
       const allOthers = wordsData
         .filter((w: Word) => w.id !== word.id)
         .map((w: Word) =>
           isOldToNew ? w.new_turkish_word : w.old_turkish_word,
         );
-      const shuffled = [...allOthers].sort(() => Math.random() - 0.5);
-      wrongOptions = shuffled.slice(0, 3);
+      wrongOptions = [...allOthers].sort(() => Math.random() - 0.5).slice(0, 3);
     }
 
     const all = [correct, ...wrongOptions];
@@ -410,7 +324,7 @@ export default function DuelSessionScreen() {
     difficulty: number,
   ) => {
     if (!activeSession) return;
-    setCanAnswer(false); // Yeni soruya geçene kadar tekrar cevap vermeyi engelle
+    setCanAnswer(false);
 
     const isOldToNew = activeSession.direction === "old-to-new";
     const correct = isOldToNew
@@ -434,20 +348,16 @@ export default function DuelSessionScreen() {
       }
       if (finalFill > FILL_BAR_CAPACITY) finalFill = FILL_BAR_CAPACITY;
 
-      setMyFillBar(finalFill);
-      setMyPieces(newPieces);
-
       if (newPieces > myPieces) {
         await submitAnswer(activeSession.id, true);
       }
+
+      setMyFillBar(finalFill);
+      setMyPieces(newPieces);
     } else {
-      const newFill = Math.max(0, myFillBar - 1);
-      setMyFillBar(newFill);
+      setMyFillBar(Math.max(0, myFillBar - 1));
     }
-
     setMyAskedIds((prev) => [...prev, wordId]);
-
-    // Kullanıcı Enter/İleri ile geçecek
   };
 
   const handlePass = () => {
@@ -467,7 +377,6 @@ export default function DuelSessionScreen() {
       sessionFinished
     )
       return;
-
     if (myPowerCooldown && new Date() < myPowerCooldown) return;
 
     const success = await usePower(activeSession.id);
@@ -485,60 +394,49 @@ export default function DuelSessionScreen() {
     if (isEndingGame.current) return;
 
     isEndingGame.current = true;
-
-    console.log("🏁 Oyun sonlandırılıyor...");
-    console.log(`📊 Parçalar - Ben: ${myPieces}, Rakip: ${opponentPieces}`);
-
     setGameEnded(true);
     setSessionFinished(true);
     setCanAnswer(false);
 
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    if (countdownTimerRef.current) {
-      clearTimeout(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
 
-    let winnerId = null;
-    let winnerType: "player1" | "player2" | "draw" | null = null;
+    // Bitişi gerçekleştir ve mutlak sonuçları getir
+    const result = await endDuel(activeSession.id);
 
-    if (myPieces > opponentPieces) {
-      winnerId = user?.id || null;
-      winnerType = isPlayer1 ? "player1" : "player2";
-    } else if (opponentPieces > myPieces) {
-      winnerId = isPlayer1
-        ? activeSession.player2_id
-        : activeSession.player1_id;
-      winnerType = isPlayer1 ? "player2" : "player1";
-    } else {
-      winnerType = "draw";
+    let finalMyResult: "win" | "loss" | "draw" = "draw";
+    if (result.actualWinnerId) {
+      if (result.actualWinnerId === user?.id) finalMyResult = "win";
+      else finalMyResult = "loss";
     }
 
-    const player1Pieces = isPlayer1 ? myPieces : opponentPieces;
-    const player2Pieces = isPlayer1 ? opponentPieces : myPieces;
+    const myFinalPieces = isPlayer1
+      ? result.actualPlayer1Pieces
+      : result.actualPlayer2Pieces;
+    const oppFinalPieces = isPlayer1
+      ? result.actualPlayer2Pieces
+      : result.actualPlayer1Pieces;
 
-    console.log(
-      `📦 Son parça sayıları - P1: ${player1Pieces}, P2: ${player2Pieces}`,
-    );
+    const myFinalPoints = isPlayer1
+      ? result.player1Points
+      : result.player2Points;
+    const oppFinalPoints = isPlayer1
+      ? result.player2Points
+      : result.player1Points;
 
-    if (activeSession.status !== "finished") {
-      const { player1Points: p1Points, player2Points: p2Points } =
-        await endDuel(activeSession.id, winnerId, {
-          player1: player1Pieces,
-          player2: player2Pieces,
-        });
+    setMyPieces(myFinalPieces);
+    setOpponentPieces(oppFinalPieces);
 
-      setPlayer1Points(p1Points);
-      setPlayer2Points(p2Points);
-    } else {
-      setPlayer1Points(0);
-      setPlayer2Points(0);
-    }
+    setResultModalData({
+      myResult: finalMyResult,
+      myPieces: myFinalPieces,
+      opponentPieces: oppFinalPieces,
+      myName: myProfile?.username || "Ben",
+      opponentName: opponentProfile?.username || "Rakip",
+      myPoints: myFinalPoints,
+      opponentPoints: oppFinalPoints,
+    });
 
-    setWinner(winnerType);
     setResultModalVisible(true);
   };
 
@@ -784,18 +682,15 @@ export default function DuelSessionScreen() {
           </TouchableOpacity>
         </Modal>
 
-        {/* DÜZELTME: player1Pieces ve player2Pieces değerleri artık isPlayer1 durumuna göre %100 doğru iletilecek, 
-            Ayrıca gecikme veya eksik veri durumu önlenerek activeSession'dan direkt en son değerler çekildi */}
         <DuelResultModal
           visible={resultModalVisible}
-          winner={winner}
-          isPlayer1={isPlayer1}
-          player1Pieces={activeSession.player1_tower_pieces}
-          player2Pieces={activeSession.player2_tower_pieces}
-          player1Name={activeSession.player1?.username || "Oyuncu 1"}
-          player2Name={activeSession.player2?.username || "Oyuncu 2"}
-          player1Points={player1Points}
-          player2Points={player2Points}
+          myResult={resultModalData.myResult}
+          myPieces={resultModalData.myPieces}
+          opponentPieces={resultModalData.opponentPieces}
+          myName={resultModalData.myName}
+          opponentName={resultModalData.opponentName}
+          myPoints={resultModalData.myPoints}
+          opponentPoints={resultModalData.opponentPoints}
           onClose={handleResultClose}
         />
       </View>

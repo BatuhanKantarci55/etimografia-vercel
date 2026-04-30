@@ -117,24 +117,46 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
   // En son getirilen gönderilerin ID'lerini tut
   const lastPostIds = useRef<Set<string>>(new Set());
+  // Önbellek temizleme işlemi sadece bir kere yapılsın
+  const cacheCleanedRef = useRef(false);
 
-  // Önbelleğe kaydet
+  // Önbelleğe kaydet (hatayı yönet, kullanıcıyı bloke etme)
   const saveToCache = async (key: string, data: any) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
-      console.error("Önbelleğe kaydedilemedi:", error);
+      // Disk dolu veya başka bir hata - sadece logla, uygulamayı durdurma
+      console.warn(`Önbelleğe kaydedilemedi (${key}):`, error);
     }
   };
 
-  // Önbellekten yükle
+  // Önbellekten yükle (hatayı yönet)
   const loadFromCache = async (key: string) => {
     try {
       const cached = await AsyncStorage.getItem(key);
       return cached ? JSON.parse(cached) : null;
     } catch (error) {
-      console.error("Önbellekten yüklenemedi:", error);
+      console.warn(`Önbellekten yüklenemedi (${key}):`, error);
       return null;
+    }
+  };
+
+  // Eski ve gereksiz büyük önbellekleri temizle (base64 içerenleri)
+  const clearOldCache = async () => {
+    if (cacheCleanedRef.current) return;
+    cacheCleanedRef.current = true;
+
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const cacheKeysToClear = allKeys.filter(
+        (key) => key.startsWith("cached_") || key.includes("user_posts_"),
+      );
+      if (cacheKeysToClear.length > 0) {
+        await AsyncStorage.multiRemove(cacheKeysToClear);
+        console.log("🗑️ Eski önbellekler temizlendi, disk alanı boşaltıldı.");
+      }
+    } catch (error) {
+      console.warn("Önbellek temizleme sırasında hata:", error);
     }
   };
 
@@ -303,7 +325,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
       // Önbellekten yüklemeyi dene (forceRefresh yoksa)
       if (!forceRefresh) {
         const cachedPosts = await loadFromCache(CACHE_KEYS.POSTS);
-        if (cachedPosts) {
+        if (cachedPosts && Array.isArray(cachedPosts)) {
           setPosts(cachedPosts);
           lastPostIds.current = new Set(cachedPosts.map((p: Post) => p.id));
         }
@@ -375,7 +397,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       setPosts(postsWithDetails);
 
-      // Önbelleğe kaydet
+      // Önbelleğe kaydet (hata olsa bile devam et)
       await saveToCache(CACHE_KEYS.POSTS, postsWithDetails);
     } catch (error) {
       console.error("Gönderiler alınamadı:", error);
@@ -391,7 +413,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
       // Önbellekten yüklemeyi dene (forceRefresh yoksa)
       if (!forceRefresh) {
         const cachedSaved = await loadFromCache(CACHE_KEYS.SAVED_POSTS);
-        if (cachedSaved) {
+        if (cachedSaved && Array.isArray(cachedSaved)) {
           setSavedPosts(cachedSaved);
         }
       }
@@ -453,7 +475,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         const cachedUserPosts = await loadFromCache(
           CACHE_KEYS.USER_POSTS(userId),
         );
-        if (cachedUserPosts) {
+        if (cachedUserPosts && Array.isArray(cachedUserPosts)) {
           setUserPosts(cachedUserPosts);
         }
       }
@@ -986,30 +1008,70 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Görseli Storage'a yükle ve public URL döndür
+  const uploadImageToStorage = async (
+    uri: string,
+    userId: string,
+  ): Promise<string | null> => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const fileExt = uri.split(".").pop() || "jpeg";
+      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from("post-images")
+        .upload(fileName, blob, {
+          contentType: blob.type,
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (error) {
+        console.error("Storage yükleme hatası:", error);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("post-images")
+        .getPublicUrl(fileName);
+
+      return publicUrlData.publicUrl;
+    } catch (err) {
+      console.error("Görsel yükleme hatası:", err);
+      return null;
+    }
+  };
+
   const createPost = async (postData: any) => {
     if (!user) return { error: { message: "Kullanıcı bulunamadı" } };
 
     try {
       let imageUrl = null;
 
-      if (postData.image_url && postData.image_url.startsWith("file://")) {
-        try {
-          console.log("📸 Fotoğraf işleniyor...");
-
-          const response = await fetch(postData.image_url);
-          const blob = await response.blob();
-
-          const base64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-
-          imageUrl = base64 as string;
-          console.log("✅ Fotoğraf base64'e dönüştürüldü");
-        } catch (uploadError: any) {
-          console.error("❌ Fotoğraf işlenirken hata:", uploadError);
-          return { error: { message: "Fotoğraf işlenirken hata oluştu" } };
+      if (postData.image_url) {
+        if (
+          postData.image_url.startsWith("http://") ||
+          postData.image_url.startsWith("https://")
+        ) {
+          imageUrl = postData.image_url;
+        } else {
+          console.log(
+            "📸 Görsel Storage'a yükleniyor... URI:",
+            postData.image_url,
+          );
+          const uploadedUrl = await uploadImageToStorage(
+            postData.image_url,
+            user.id,
+          );
+          if (uploadedUrl) {
+            imageUrl = uploadedUrl;
+            console.log("✅ Görsel Storage'a yüklendi, URL:", imageUrl);
+          } else {
+            console.error("❌ Görsel yüklenemedi");
+            return { error: { message: "Görsel yüklenirken hata oluştu" } };
+          }
         }
       }
 
@@ -1050,7 +1112,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const { data: post, error: fetchError } = await supabase
         .from("posts")
-        .select("user_id")
+        .select("user_id, image_url")
         .eq("id", postId)
         .single();
 
@@ -1058,6 +1120,19 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (post.user_id !== user.id) {
         return { error: { message: "Bu gönderiyi silme yetkiniz yok" } };
+      }
+
+      if (
+        post.image_url &&
+        post.image_url.includes(
+          "supabase.co/storage/v1/object/public/post-images/",
+        )
+      ) {
+        const path = post.image_url.split("/post-images/")[1];
+        if (path) {
+          await supabase.storage.from("post-images").remove([path]);
+          console.log("🗑️ Storage dosyası silindi:", path);
+        }
       }
 
       const { error } = await supabase.from("posts").delete().eq("id", postId);
@@ -1096,6 +1171,11 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
       setRefreshing(false);
     }
   };
+
+  // Uygulama başlangıcında eski önbellekleri temizle
+  useEffect(() => {
+    clearOldCache();
+  }, []);
 
   useEffect(() => {
     if (user) {

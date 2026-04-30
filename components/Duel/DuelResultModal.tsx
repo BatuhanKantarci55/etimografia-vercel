@@ -8,27 +8,25 @@ import { Modal, StyleSheet, TouchableOpacity, View } from "react-native";
 
 interface Props {
   visible: boolean;
-  winner: "player1" | "player2" | "draw" | null;
-  isPlayer1: boolean;
-  player1Pieces: number;
-  player2Pieces: number;
-  player1Name: string;
-  player2Name: string;
-  player1Points?: number;
-  player2Points?: number;
+  myResult: "win" | "loss" | "draw";
+  myPieces: number;
+  opponentPieces: number;
+  myName: string;
+  opponentName: string;
+  myPoints: number;
+  opponentPoints: number;
   onClose: () => void;
 }
 
 export default function DuelResultModal({
   visible,
-  winner,
-  isPlayer1,
-  player1Pieces,
-  player2Pieces,
-  player1Name,
-  player2Name,
-  player1Points = 0,
-  player2Points = 0,
+  myResult,
+  myPieces,
+  opponentPieces,
+  myName,
+  opponentName,
+  myPoints,
+  opponentPoints,
   onClose,
 }: Props) {
   const { colors } = useTheme();
@@ -38,24 +36,20 @@ export default function DuelResultModal({
   let icon: keyof typeof Ionicons.glyphMap = "remove";
   let iconColor = colors.text;
 
-  if (winner === "draw") {
+  if (myResult === "draw") {
     title = "Düello Berabere Bitti!";
     icon = "remove";
     iconColor = colors.text;
-  } else if (winner === "player1") {
-    title = isPlayer1 ? "Tebrikler, Kazandın!" : "Maalesef Kaybettin!";
-    icon = isPlayer1 ? "trophy" : "sad-outline";
-    iconColor = isPlayer1 ? "#FFD700" : "#F44336";
-  } else if (winner === "player2") {
-    title = isPlayer1 ? "Maalesef Kaybettin!" : "Tebrikler, Kazandın!";
-    icon = isPlayer1 ? "sad-outline" : "trophy";
-    iconColor = isPlayer1 ? "#F44336" : "#FFD700";
+  } else if (myResult === "win") {
+    title = "Tebrikler, Kazandın!";
+    icon = "trophy";
+    iconColor = "#FFD700";
+  } else if (myResult === "loss") {
+    title = "Maalesef Kaybettin!";
+    icon = "sad-outline";
+    iconColor = "#F44336";
   }
 
-  const myPoints = isPlayer1 ? player1Points : player2Points;
-  const opponentPoints = isPlayer1 ? player2Points : player1Points;
-
-  // Yeni puan detaylarını hesapla
   const calculateDetails = (
     pieces: number,
     result: "win" | "loss" | "draw",
@@ -69,37 +63,11 @@ export default function DuelResultModal({
     };
   };
 
-  const myResult = (() => {
-    if (winner === "draw") return "draw";
-    if (
-      (isPlayer1 && winner === "player1") ||
-      (!isPlayer1 && winner === "player2")
-    )
-      return "win";
-    return "loss";
-  })();
+  const myDetails = calculateDetails(myPieces, myResult);
 
-  const opponentResult = (() => {
-    if (winner === "draw") return "draw";
-    if (
-      (isPlayer1 && winner === "player2") ||
-      (!isPlayer1 && winner === "player1")
-    )
-      return "win";
-    return "loss";
-  })();
-
-  const myDetails = calculateDetails(
-    isPlayer1 ? player1Pieces : player2Pieces,
-    myResult,
-  );
-  const opponentDetails = calculateDetails(
-    isPlayer1 ? player2Pieces : player1Pieces,
-    opponentResult,
-  );
-
-  // DÜZELTME: Rakip adını dinamik olarak bulup atıyoruz
-  const opponentNameDisplay = isPlayer1 ? player2Name : player1Name;
+  const opponentResult =
+    myResult === "win" ? "loss" : myResult === "loss" ? "win" : "draw";
+  const opponentDetails = calculateDetails(opponentPieces, opponentResult);
 
   const handleHomePress = () => {
     onClose();
@@ -131,18 +99,18 @@ export default function DuelResultModal({
           <View style={styles.scoreContainer}>
             <View style={styles.scoreRow}>
               <CustomText style={[styles.playerName, { color: colors.text }]}>
-                {player1Name}
+                {myName}
               </CustomText>
               <CustomText style={[styles.scoreText, { color: colors.text }]}>
-                {player1Pieces} parça
+                {myPieces} parça
               </CustomText>
             </View>
             <View style={styles.scoreRow}>
               <CustomText style={[styles.playerName, { color: colors.text }]}>
-                {player2Name}
+                {opponentName}
               </CustomText>
               <CustomText style={[styles.scoreText, { color: colors.text }]}>
-                {player2Pieces} parça
+                {opponentPieces} parça
               </CustomText>
             </View>
           </View>
@@ -203,7 +171,7 @@ export default function DuelResultModal({
                 <CustomText
                   style={[styles.pointsLabel, { color: colors.text }]}
                 >
-                  Kule Bonusu (1×{isPlayer1 ? player1Pieces : player2Pieces}):
+                  Kule Bonusu (1×{myPieces}):
                 </CustomText>
                 <CustomText
                   style={[styles.pointsValue, { color: colors.text }]}
@@ -260,7 +228,7 @@ export default function DuelResultModal({
               <CustomText
                 style={[styles.pointsLabel, { color: colors.text + "80" }]}
               >
-                {opponentNameDisplay}:
+                {opponentName}:
               </CustomText>
               <CustomText
                 style={[
@@ -319,6 +287,11 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 20,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   modalTitle: {
     fontWeight: "600",

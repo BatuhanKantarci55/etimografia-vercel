@@ -17,10 +17,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
-  Modal,
-  StyleSheet,
+  Modal, Platform, StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 interface PostItemProps {
@@ -194,18 +193,38 @@ export default function PostItem({
 
   const handleDelete = () => {
     setMenuVisible(false);
-    Alert.alert(
-      "Gönderiyi Sil",
-      "Bu gönderiyi silmek istediğinize emin misiniz?",
-      [
-        { text: "İptal", style: "cancel" },
-        {
-          text: "Sil",
-          style: "destructive",
-          onPress: () => onDelete && onDelete(),
-        },
-      ],
-    );
+    if (!onDelete) {
+      console.warn("onDelete callback is not provided");
+      return;
+    }
+
+    const confirmDelete = () => {
+      if (Platform.OS === "web") {
+        // Web'de window.confirm kullan
+        const confirmed = window.confirm(
+          "Bu gönderiyi silmek istediğinize emin misiniz?",
+        );
+        if (confirmed) {
+          onDelete();
+        }
+      } else {
+        // Mobilde Alert.alert kullan
+        Alert.alert(
+          "Gönderiyi Sil",
+          "Bu gönderiyi silmek istediğinize emin misiniz?",
+          [
+            { text: "İptal", style: "cancel" },
+            {
+              text: "Sil",
+              style: "destructive",
+              onPress: () => onDelete(),
+            },
+          ],
+        );
+      }
+    };
+
+    confirmDelete();
   };
 
   const handleCommentPress = () => {
@@ -405,6 +424,7 @@ export default function PostItem({
           />
         </TouchableOpacity>
 
+        {/* Modal - Web'de tıklama sorununu çözmek için event propagation durduruldu */}
         <Modal
           visible={menuVisible}
           transparent
@@ -426,6 +446,8 @@ export default function PostItem({
                   maxWidth: isDesktop ? 180 : 300,
                 },
               ]}
+              onStartShouldSetResponder={() => true}
+              onTouchStart={(e) => e.stopPropagation()}
             >
               {isOwnPost && onDelete && (
                 <TouchableOpacity

@@ -119,9 +119,14 @@ type DuelContextType = {
   usePower: (sessionId: string) => Promise<boolean>;
   endDuel: (
     sessionId: string,
-    winnerId: string | null,
-    finalPieces?: { player1: number; player2: number },
-  ) => Promise<{ player1Points: number; player2Points: number }>;
+    winnerId?: string | null,
+  ) => Promise<{
+    player1Points: number;
+    player2Points: number;
+    actualWinnerId: string | null;
+    actualPlayer1Pieces: number;
+    actualPlayer2Pieces: number;
+  }>;
   leaveDuel: (sessionId: string) => Promise<void>;
 
   // İstatistikler
@@ -154,7 +159,13 @@ const DuelContext = createContext<DuelContextType>({
   rejectInvite: async () => {},
   submitAnswer: async () => {},
   usePower: async () => false,
-  endDuel: async () => ({ player1Points: 0, player2Points: 0 }),
+  endDuel: async () => ({
+    player1Points: 0,
+    player2Points: 0,
+    actualWinnerId: null,
+    actualPlayer1Pieces: 0,
+    actualPlayer2Pieces: 0,
+  }),
   leaveDuel: async () => {},
 
   userStats: null,
@@ -193,9 +204,10 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
   const sessionsChannel = useRef<RealtimeChannel | null>(null);
   const sessionChannel = useRef<RealtimeChannel | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Yarış Durumu (Race Condition) önleyicileri
   const isEndingDuel = useRef(false);
   const endedSessions = useRef<Set<string>>(new Set());
-  const gameEndTriggered = useRef<Set<string>>(new Set());
 
   const setFilters = useCallback((newFilters: Partial<DuelFilters>) => {
     setFiltersState((prev) => ({ ...prev, ...newFilters }));
@@ -214,23 +226,18 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     setActiveSession(null);
   }, []);
 
-  // Kullanıcı istatistiklerini getir
   const fetchUserStats = useCallback(async () => {
     if (!user) return;
-
     try {
       const { data, error } = await supabase
         .from("duel_stats")
         .select("*")
         .eq("user_id", user.id)
         .single();
-
       if (error && error.code !== "PGRST116") throw error;
-
       if (data) {
         setUserStats(data);
       } else {
-        // Varsayılan istatistikler
         setUserStats({
           id: "",
           user_id: user.id,
@@ -248,12 +255,9 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user]);
 
-  // Düello geçmişini getir
   const fetchDuelHistory = useCallback(async () => {
     if (!user) return;
-
     try {
-      // Önce geçmiş kayıtları getir
       const { data: historyData, error: historyError } = await supabase
         .from("duel_history")
         .select("*")
@@ -262,13 +266,11 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
         .limit(20);
 
       if (historyError) throw historyError;
-
       if (!historyData || historyData.length === 0) {
         setDuelHistory([]);
         return;
       }
 
-      // Profil bilgilerini ayrı ayrı getir
       const historyWithProfiles = await Promise.all(
         historyData.map(async (item) => {
           const [player1Res, player2Res] = await Promise.all([
@@ -291,30 +293,25 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           };
         }),
       );
-
       setDuelHistory(historyWithProfiles);
     } catch (error) {
       console.error("Düello geçmişi getirilirken hata:", error);
     }
   }, [user]);
 
-  // Liderlik tablosunu getir
   const fetchLeaderboard = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("leaderboard")
         .select("*")
         .limit(100);
-
       if (error) throw error;
-
       setLeaderboard(data || []);
     } catch (error) {
       console.error("Liderlik tablosu getirilirken hata:", error);
     }
   }, []);
 
-  // Puan hesapla
   const calculatePoints = (
     towerPieces: number,
     isWinner: boolean,
@@ -325,7 +322,8 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     return winLossPoints + towerBonus;
   };
 
-  // İstatistikleri ve Arena Kupalarını güncelle
+  // DÜZELTME 1: updateStats fonksiyonu ARTIK SADECE GEÇERLİ KULLANICIYI günceller.
+  // Çift puan ekleme sorunu çözülmüş ve RLS kısıtlamalarına tam uyumlu hale getirilmiştir.
   const updateStats = useCallback(
     async (
       player1Id: string,
@@ -336,12 +334,11 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
       player1Points: number,
       player2Points: number,
     ) => {
-      if (!user) return;
-
       try {
-        // DÜZELTME: RLS engeline takılmamak ve sistemin çökmemesi için
-        // BURADA SADECE MEVCUT KULLANICININ BİLGİLERİNİ GÜNCELLİYORUZ.
-        const playerId = user.id;
+        const playerId = user?.id;
+        if (!playerId) return;
+
+        // Yalnızca geçerli kullanıcının değerlerini ayıklıyoruz
         const isPlayer1 = playerId === player1Id;
         const points = isPlayer1 ? player1Points : player2Points;
         const pieces = isPlayer1 ? player1Pieces : player2Pieces;
@@ -370,7 +367,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           } else if (isDraw) {
             updates.draws = existingStats.draws + 1;
           }
-
           await supabase
             .from("duel_stats")
             .update(updates)
@@ -381,22 +377,19 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
             total_duels: 1,
             total_points: points,
             total_tower_pieces: pieces,
+            updated_at: new Date().toISOString(),
             wins: isWinner ? 1 : 0,
             losses: isLoser ? 1 : 0,
             draws: isDraw ? 1 : 0,
-            updated_at: new Date().toISOString(),
           };
-
           await supabase.from("duel_stats").insert(newStats);
         }
 
-        // Arena kupalarını güncelleme (Aylık Liderliği tetikler)
         const { data: arenaProgress } = await supabase
           .from("user_arena_progress")
           .select("*")
           .eq("user_id", playerId)
           .single();
-
         if (arenaProgress) {
           const newTrophies = Math.max(
             0,
@@ -423,7 +416,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           });
         }
 
-        // Kullanıcı istatistiklerini yenile
         await fetchUserStats();
         await fetchLeaderboard();
       } catch (error) {
@@ -433,14 +425,12 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user, fetchUserStats, fetchLeaderboard],
   );
 
-  // Davet gönder
   const sendInvite = useCallback(
     async (
       receiverId: string,
       inviteFilters: DuelFilters,
     ): Promise<boolean> => {
       if (!user) return false;
-
       setIsLoading(true);
       try {
         const expiresAt = new Date();
@@ -467,7 +457,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           .select("id, username, avatar_index")
           .eq("id", user.id)
           .single();
-
         const requestWithSender = {
           ...insertData,
           sender: senderData || undefined,
@@ -485,20 +474,16 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user],
   );
 
-  // Davet iptal et
   const cancelInvite = useCallback(
     async (requestId: string) => {
       if (!user) return;
-
       try {
         const { error } = await supabase
           .from("duel_requests")
           .delete()
           .eq("id", requestId)
           .eq("sender_id", user.id);
-
         if (error) throw error;
-
         setSentRequests((prev) => prev.filter((req) => req.id !== requestId));
       } catch (error) {
         console.error("Davet iptal edilirken hata:", error);
@@ -507,11 +492,9 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user],
   );
 
-  // Daveti kabul et
   const acceptInvite = useCallback(
     async (requestId: string): Promise<boolean> => {
       if (!user) return false;
-
       setIsLoading(true);
       try {
         const { error: updateError } = await supabase
@@ -519,7 +502,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           .update({ status: "accepted" })
           .eq("id", requestId)
           .eq("receiver_id", user.id);
-
         if (updateError) throw updateError;
 
         const { data: request } = await supabase
@@ -527,12 +509,9 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           .select("*")
           .eq("id", requestId)
           .single();
-
         if (!request) throw new Error("Davet bulunamadı");
 
         const now = new Date().toISOString();
-
-        // Direkt "ongoing" olarak başlat
         const { data: session, error: sessionError } = await supabase
           .from("duel_sessions")
           .insert({
@@ -552,7 +531,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (sessionError) throw sessionError;
 
-        // Profil bilgilerini getir
         const [player1Res, player2Res] = await Promise.all([
           supabase
             .from("profiles")
@@ -571,7 +549,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           player1: player1Res.data || undefined,
           player2: player2Res.data || undefined,
         };
-
         setActiveSession(sessionWithProfiles as DuelSession);
         return true;
       } catch (error) {
@@ -584,20 +561,16 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user],
   );
 
-  // Daveti reddet
   const rejectInvite = useCallback(
     async (requestId: string) => {
       if (!user) return;
-
       try {
         const { error } = await supabase
           .from("duel_requests")
           .update({ status: "rejected" })
           .eq("id", requestId)
           .eq("receiver_id", user.id);
-
         if (error) throw error;
-
         setPendingRequests((prev) =>
           prev.filter((req) => req.id !== requestId),
         );
@@ -608,42 +581,28 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user],
   );
 
-  // Cevap gönder
   const submitAnswer = useCallback(
     async (sessionId: string, isCorrect: boolean) => {
       if (!user || !activeSession) return;
-
       try {
         const isPlayer1 = user.id === activeSession.player1_id;
-
         const currentPieces = isPlayer1
           ? activeSession.player1_tower_pieces
           : activeSession.player2_tower_pieces;
         const newPieces = currentPieces + (isCorrect ? 1 : 0);
-
-        console.log(
-          `📤 Cevap gönderiliyor - Oyuncu: ${isPlayer1 ? "P1" : "P2"}, Doğru: ${isCorrect}, Parça: ${currentPieces} -> ${newPieces}`,
-        );
-
         const updates: any = {};
-
-        if (isPlayer1) {
-          updates.player1_tower_pieces = newPieces;
-        } else {
-          updates.player2_tower_pieces = newPieces;
-        }
+        if (isPlayer1) updates.player1_tower_pieces = newPieces;
+        else updates.player2_tower_pieces = newPieces;
 
         const { error } = await supabase
           .from("duel_sessions")
           .update(updates)
           .eq("id", sessionId);
-
         if (error) throw error;
 
-        // Local state'i de güncelle
         setActiveSession((prev) => {
           if (!prev) return null;
-          const updated = {
+          return {
             ...prev,
             player1_tower_pieces: isPlayer1
               ? newPieces
@@ -652,7 +611,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
               ? newPieces
               : prev.player2_tower_pieces,
           };
-          return updated;
         });
       } catch (error) {
         console.error("Cevap gönderilirken hata:", error);
@@ -661,35 +619,26 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user, activeSession],
   );
 
-  // Özel güç kullan
   const usePower = useCallback(
     async (sessionId: string): Promise<boolean> => {
       if (!user || !activeSession) return false;
-
       try {
         const isPlayer1 = user.id === activeSession.player1_id;
         const opponentTower = isPlayer1
           ? activeSession.player2_tower_pieces
           : activeSession.player1_tower_pieces;
-
         if (opponentTower === 0) return false;
 
         const updates: any = {};
-
-        if (isPlayer1) {
-          updates.player2_tower_pieces = opponentTower - 1;
-        } else {
-          updates.player1_tower_pieces = opponentTower - 1;
-        }
+        if (isPlayer1) updates.player2_tower_pieces = opponentTower - 1;
+        else updates.player1_tower_pieces = opponentTower - 1;
 
         const { error } = await supabase
           .from("duel_sessions")
           .update(updates)
           .eq("id", sessionId);
-
         if (error) throw error;
 
-        // Local state'i de güncelle
         setActiveSession((prev) => {
           if (!prev) return null;
           return {
@@ -702,7 +651,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
               : prev.player2_tower_pieces,
           };
         });
-
         return true;
       } catch (error) {
         console.error("Özel güç kullanılırken hata:", error);
@@ -712,94 +660,154 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user, activeSession],
   );
 
-  // Düelloyu sonlandır
+  // DÜZELTME 2: Sunucu otoritesi devrede. Kilitli (atomik) güncelleme yapılarak çifte history kaydı engellenir
   const endDuel = useCallback(
     async (
       sessionId: string,
-      winnerId: string | null,
-      finalPieces?: { player1: number; player2: number },
-    ): Promise<{ player1Points: number; player2Points: number }> => {
+      winnerId: string | null = null,
+    ): Promise<{
+      player1Points: number;
+      player2Points: number;
+      actualWinnerId: string | null;
+      actualPlayer1Pieces: number;
+      actualPlayer2Pieces: number;
+    }> => {
       if (!user || !activeSession) {
-        console.log("❌ endDuel: user veya activeSession yok");
-        return { player1Points: 0, player2Points: 0 };
+        return {
+          player1Points: 0,
+          player2Points: 0,
+          actualWinnerId: null,
+          actualPlayer1Pieces: 0,
+          actualPlayer2Pieces: 0,
+        };
       }
 
       if (endedSessions.current.has(sessionId)) {
-        return { player1Points: 0, player2Points: 0 };
+        return {
+          player1Points: 0,
+          player2Points: 0,
+          actualWinnerId: null,
+          actualPlayer1Pieces: 0,
+          actualPlayer2Pieces: 0,
+        };
       }
 
       if (isEndingDuel.current) {
-        return { player1Points: 0, player2Points: 0 };
+        return {
+          player1Points: 0,
+          player2Points: 0,
+          actualWinnerId: null,
+          actualPlayer1Pieces: 0,
+          actualPlayer2Pieces: 0,
+        };
       }
-
       isEndingDuel.current = true;
 
       try {
-        const player1Pieces =
-          finalPieces?.player1 ?? activeSession.player1_tower_pieces;
-        const player2Pieces =
-          finalPieces?.player2 ?? activeSession.player2_tower_pieces;
-
-        const isPlayer1Winner = winnerId === activeSession.player1_id;
-        const isPlayer2Winner = winnerId === activeSession.player2_id;
-        const isPlayer1Loser =
-          winnerId !== null && winnerId !== activeSession.player1_id;
-        const isPlayer2Loser =
-          winnerId !== null && winnerId !== activeSession.player2_id;
-
-        const player1Points = calculatePoints(
-          player1Pieces,
-          isPlayer1Winner,
-          isPlayer1Loser,
-        );
-        const player2Points = calculatePoints(
-          player2Pieces,
-          isPlayer2Winner,
-          isPlayer2Loser,
-        );
-
-        // DÜZELTME 1: Çifte kaydı önlemek için önce veritabanındaki mevcut durumu kontrol et
-        const { data: currentSession } = await supabase
+        // Sunucudaki son kule parça durumlarını güvenli şekilde çekiyoruz
+        const { data: dbSession, error: dbError } = await supabase
           .from("duel_sessions")
-          .select("status")
+          .select("*")
           .eq("id", sessionId)
           .single();
+        if (dbError) throw dbError;
 
-        if (currentSession?.status === "finished") {
-          console.log(
-            "ℹ️ endDuel: Bu oturum rakip tarafından sonlandırılmış. Sadece kendi istatistiklerimiz güncelleniyor.",
-          );
+        let p1P = dbSession.player1_tower_pieces;
+        let p2P = dbSession.player2_tower_pieces;
+        let actualWinnerId = dbSession.winner_id;
 
-          await updateStats(
-            activeSession.player1_id,
-            activeSession.player2_id,
-            winnerId,
-            player1Pieces,
-            player2Pieces,
-            player1Points,
-            player2Points,
-          );
-
-          endedSessions.current.add(sessionId);
-          gameEndTriggered.current.add(sessionId);
-          return { player1Points, player2Points };
+        // Kazanan belli değilse son parçalara göre belirle
+        if (dbSession.status !== "finished") {
+          if (p1P > p2P) actualWinnerId = dbSession.player1_id;
+          else if (p2P > p1P) actualWinnerId = dbSession.player2_id;
+          else actualWinnerId = winnerId; // Ayrılma veya zaman dolması ihtimalleri için
         }
 
-        // Eğer ilk kez biz bitiriyorsak:
-        const { error: sessionError } = await supabase
+        const isP1Winner = actualWinnerId === dbSession.player1_id;
+        const isP2Winner = actualWinnerId === dbSession.player2_id;
+        const isP1Loser =
+          actualWinnerId !== null && actualWinnerId !== dbSession.player1_id;
+        const isP2Loser =
+          actualWinnerId !== null && actualWinnerId !== dbSession.player2_id;
+
+        const p1Points = calculatePoints(p1P, isP1Winner, isP1Loser);
+        const p2Points = calculatePoints(p2P, isP2Winner, isP2Loser);
+
+        // Eğer veritabanı "finished" olarak güncellenmişse, biz sadece kendi istatistiklerimizi alıyoruz
+        if (dbSession.status === "finished") {
+          await updateStats(
+            dbSession.player1_id,
+            dbSession.player2_id,
+            actualWinnerId,
+            p1P,
+            p2P,
+            p1Points,
+            p2Points,
+          );
+          endedSessions.current.add(sessionId);
+          return {
+            player1Points: p1Points,
+            player2Points: p2Points,
+            actualWinnerId,
+            actualPlayer1Pieces: p1P,
+            actualPlayer2Pieces: p2P,
+          };
+        }
+
+        // Eğer ilk bitiren cihazsak, durumu finished olarak kilitleyelim
+        const { data: finalizedSession } = await supabase
           .from("duel_sessions")
           .update({
             status: "finished",
-            winner_id: winnerId,
+            winner_id: actualWinnerId,
             finished_at: new Date().toISOString(),
-            player1_tower_pieces: player1Pieces,
-            player2_tower_pieces: player2Pieces,
           })
-          .eq("id", sessionId);
+          .eq("id", sessionId)
+          .eq("status", "ongoing")
+          .select()
+          .maybeSingle();
 
-        if (sessionError) throw sessionError;
+        // Kilidi rakip bizden 1-2 ms önce aldıysa
+        if (!finalizedSession) {
+          const { data: latest } = await supabase
+            .from("duel_sessions")
+            .select("*")
+            .eq("id", sessionId)
+            .single();
+          const l_winner = latest.winner_id;
+          const l_p1P = latest.player1_tower_pieces;
+          const l_p2P = latest.player2_tower_pieces;
+          const l_p1Points = calculatePoints(
+            l_p1P,
+            l_winner === latest.player1_id,
+            l_winner !== null && l_winner !== latest.player1_id,
+          );
+          const l_p2Points = calculatePoints(
+            l_p2P,
+            l_winner === latest.player2_id,
+            l_winner !== null && l_winner !== latest.player2_id,
+          );
 
-        // DÜZELTME 2: Eşzamanlı (saniye saniyesine) bitirmelerde çifte history kaydını önlemek için son bir kontrol
+          await updateStats(
+            latest.player1_id,
+            latest.player2_id,
+            l_winner,
+            l_p1P,
+            l_p2P,
+            l_p1Points,
+            l_p2Points,
+          );
+          endedSessions.current.add(sessionId);
+          return {
+            player1Points: l_p1Points,
+            player2Points: l_p2Points,
+            actualWinnerId: l_winner,
+            actualPlayer1Pieces: l_p1P,
+            actualPlayer2Pieces: l_p2P,
+          };
+        }
+
+        // Kilidi biz kazandık, bir adet History oluşturulacak
         const { data: existingHistory } = await supabase
           .from("duel_history")
           .select("id")
@@ -807,71 +815,67 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
           .maybeSingle();
 
         if (!existingHistory) {
-          const { error: historyError } = await supabase
-            .from("duel_history")
-            .insert({
-              duel_session_id: sessionId,
-              player1_id: activeSession.player1_id,
-              player2_id: activeSession.player2_id,
-              winner_id: winnerId,
-              player1_tower_pieces: player1Pieces,
-              player2_tower_pieces: player2Pieces,
-              player1_points: player1Points,
-              player2_points: player2Points,
-              played_at: new Date().toISOString(),
-            });
-
-          if (historyError) {
-            console.log(
-              "Geçmiş eklenirken uyarı (Zaten eklenmiş olabilir):",
-              historyError.message,
-            );
-          }
+          await supabase.from("duel_history").insert({
+            duel_session_id: sessionId,
+            player1_id: dbSession.player1_id,
+            player2_id: dbSession.player2_id,
+            winner_id: actualWinnerId,
+            player1_tower_pieces: p1P,
+            player2_tower_pieces: p2P,
+            player1_points: p1Points,
+            player2_points: p2Points,
+            played_at: new Date().toISOString(),
+          });
         }
 
         await updateStats(
-          activeSession.player1_id,
-          activeSession.player2_id,
-          winnerId,
-          player1Pieces,
-          player2Pieces,
-          player1Points,
-          player2Points,
+          dbSession.player1_id,
+          dbSession.player2_id,
+          actualWinnerId,
+          p1P,
+          p2P,
+          p1Points,
+          p2Points,
         );
-
         await fetchDuelHistory();
 
         endedSessions.current.add(sessionId);
-        gameEndTriggered.current.add(sessionId);
-
-        return { player1Points, player2Points };
+        return {
+          player1Points: p1Points,
+          player2Points: p2Points,
+          actualWinnerId,
+          actualPlayer1Pieces: p1P,
+          actualPlayer2Pieces: p2P,
+        };
       } catch (error) {
         console.error("Düello sonlandırılırken hata:", error);
-        return { player1Points: 0, player2Points: 0 };
+        return {
+          player1Points: 0,
+          player2Points: 0,
+          actualWinnerId: null,
+          actualPlayer1Pieces: 0,
+          actualPlayer2Pieces: 0,
+        };
       } finally {
         setTimeout(() => {
           isEndingDuel.current = false;
-        }, 1000);
+        }, 500);
       }
     },
     [user, activeSession, updateStats, fetchDuelHistory],
   );
 
-  // Düellodan ayrıl
   const leaveDuel = useCallback(
     async (sessionId: string) => {
       if (!user || !activeSession) return;
-
       try {
         const isPlayer1 = user.id === activeSession.player1_id;
         const opponentId = isPlayer1
           ? activeSession.player2_id
           : activeSession.player1_id;
 
-        await endDuel(sessionId, opponentId, {
-          player1: activeSession.player1_tower_pieces,
-          player2: activeSession.player2_tower_pieces,
-        });
+        // Terk eden kişi karşı tarafın otomatik kazandığını bildirir
+        await endDuel(sessionId, opponentId);
 
         setActiveSession(null);
       } catch (error) {
@@ -881,13 +885,54 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     [user, activeSession, endDuel],
   );
 
-  // Tüm düello oturumlarını dinle
+  useEffect(() => {
+    if (!activeSession) return;
+
+    if (
+      activeSession.status === "countdown" &&
+      activeSession.countdown_started_at
+    ) {
+      if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
+
+      const countdownStarted = new Date(
+        activeSession.countdown_started_at,
+      ).getTime();
+      const now = Date.now();
+      const elapsed = Math.floor((now - countdownStarted) / 1000);
+
+      if (elapsed >= 3) {
+        supabase
+          .from("duel_sessions")
+          .update({ status: "ongoing" })
+          .eq("id", activeSession.id)
+          .then(({ error }) => {
+            if (error) console.error("Oyun başlatılamadı:", error);
+          });
+      } else {
+        const waitTime = (3 - elapsed) * 1000;
+        countdownTimerRef.current = setTimeout(() => {
+          supabase
+            .from("duel_sessions")
+            .update({ status: "ongoing" })
+            .eq("id", activeSession.id)
+            .then(({ error }) => {
+              if (error) console.error("Oyun başlatılamadı:", error);
+            });
+        }, waitTime);
+      }
+    }
+    return () => {
+      if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
+    };
+  }, [
+    activeSession?.id,
+    activeSession?.status,
+    activeSession?.countdown_started_at,
+  ]);
+
   const listenForSessions = useCallback(() => {
     if (!user) return;
-
-    if (sessionsChannel.current) {
-      sessionsChannel.current.unsubscribe();
-    }
+    if (sessionsChannel.current) sessionsChannel.current.unsubscribe();
 
     sessionsChannel.current = supabase
       .channel("all-duel-sessions")
@@ -901,7 +946,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
         },
         async (payload) => {
           const newSession = payload.new as DuelSession;
-
           const [player1Res, player2Res] = await Promise.all([
             supabase
               .from("profiles")
@@ -914,13 +958,11 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
               .eq("id", newSession.player2_id)
               .single(),
           ]);
-
           const sessionWithProfiles = {
             ...newSession,
             player1: player1Res.data || undefined,
             player2: player2Res.data || undefined,
           };
-
           setActiveSession(sessionWithProfiles as DuelSession);
         },
       )
@@ -934,7 +976,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
         },
         async (payload) => {
           const newSession = payload.new as DuelSession;
-
           const [player1Res, player2Res] = await Promise.all([
             supabase
               .from("profiles")
@@ -947,28 +988,20 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
               .eq("id", newSession.player2_id)
               .single(),
           ]);
-
           const sessionWithProfiles = {
             ...newSession,
             player1: player1Res.data || undefined,
             player2: player2Res.data || undefined,
           };
-
           setActiveSession(sessionWithProfiles as DuelSession);
         },
       )
       .subscribe();
   }, [user]);
 
-  // Aktif session değiştiğinde güncellemeleri dinle
   const listenForSessionUpdates = useCallback(() => {
     if (!activeSession || !user) return;
-
-    if (sessionChannel.current) {
-      sessionChannel.current.unsubscribe();
-    }
-
-    console.log(`🔔 Session dinleyici başlatılıyor: ${activeSession.id}`);
+    if (sessionChannel.current) sessionChannel.current.unsubscribe();
 
     sessionChannel.current = supabase
       .channel(`duel-session-${activeSession.id}`)
@@ -983,78 +1016,27 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
         (payload) => {
           const updated = payload.new as DuelSession;
 
-          if (
-            updated.status === "finished" &&
-            !gameEndTriggered.current.has(activeSession.id)
-          ) {
-            console.log("🏁 Karşı taraf oyunu bitirdi, biz de bitiriyoruz...");
-
-            gameEndTriggered.current.add(activeSession.id);
-
-            let winnerType: "player1" | "player2" | "draw" | null = null;
-            if (updated.winner_id) {
-              if (updated.winner_id === activeSession.player1_id) {
-                winnerType = "player1";
-              } else {
-                winnerType = "player2";
-              }
-            } else {
-              winnerType = "draw";
-            }
-
-            const isPlayer1Winner = winnerType === "player1";
-            const isPlayer2Winner = winnerType === "player2";
-
-            const p1Points =
-              (isPlayer1Winner ? 30 : isPlayer2Winner ? -15 : 0) +
-              updated.player1_tower_pieces * 1;
-            const p2Points =
-              (isPlayer2Winner ? 30 : isPlayer1Winner ? -15 : 0) +
-              updated.player2_tower_pieces * 1;
-
-            const isPlayer1 = user.id === activeSession.player1_id;
-
-            setActiveSession((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                player1_tower_pieces: updated.player1_tower_pieces,
-                player2_tower_pieces: updated.player2_tower_pieces,
-                status: updated.status,
-                winner_id: updated.winner_id,
-                finished_at: updated.finished_at,
-              };
-            });
-
-            endDuel(activeSession.id, updated.winner_id, {
-              player1: updated.player1_tower_pieces,
-              player2: updated.player2_tower_pieces,
-            });
-          } else {
-            setActiveSession((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                player1_tower_pieces: updated.player1_tower_pieces,
-                player2_tower_pieces: updated.player2_tower_pieces,
-                status: updated.status,
-                winner_id: updated.winner_id,
-                finished_at: updated.finished_at,
-              };
-            });
-          }
+          // Karşı taraf veya biz bir işlem yaptığımızda durumu (state'i) güncelliyoruz.
+          // Eğer durum "finished" olduysa, session.tsx bunu fark edip handleGameEnd() çağıracak.
+          setActiveSession((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              player1_tower_pieces: updated.player1_tower_pieces,
+              player2_tower_pieces: updated.player2_tower_pieces,
+              status: updated.status,
+              winner_id: updated.winner_id,
+              finished_at: updated.finished_at,
+            };
+          });
         },
       )
       .subscribe();
-  }, [activeSession, user, endDuel]);
+  }, [activeSession, user]);
 
-  // Davetleri dinle
   const listenForInvites = useCallback(() => {
     if (!user) return;
-
-    if (invitesChannel.current) {
-      invitesChannel.current.unsubscribe();
-    }
+    if (invitesChannel.current) invitesChannel.current.unsubscribe();
 
     invitesChannel.current = supabase
       .channel("duel-invites")
@@ -1097,7 +1079,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
       .subscribe();
   }, [user]);
 
-  // Ana dinleyiciler
   useEffect(() => {
     if (user) {
       listenForInvites();
@@ -1106,7 +1087,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
       fetchDuelHistory();
       fetchLeaderboard();
     }
-
     return () => {
       if (invitesChannel.current) invitesChannel.current.unsubscribe();
       if (sessionsChannel.current) sessionsChannel.current.unsubscribe();
@@ -1122,7 +1102,6 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
     fetchLeaderboard,
   ]);
 
-  // Aktif session değiştiğinde güncellemeleri dinle
   useEffect(() => {
     if (activeSession) {
       listenForSessionUpdates();
@@ -1150,14 +1129,12 @@ export const DuelProvider = ({ children }: { children: React.ReactNode }) => {
         usePower,
         endDuel,
         leaveDuel,
-
         userStats,
         duelHistory,
         leaderboard,
         fetchUserStats,
         fetchDuelHistory,
         fetchLeaderboard,
-
         isLoading,
       }}
     >

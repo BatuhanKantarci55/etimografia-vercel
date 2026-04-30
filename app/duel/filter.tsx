@@ -784,7 +784,7 @@ export default function DuelFilterScreen() {
               ? {
                   flexGrow: 1,
                   justifyContent: "center",
-                  paddingBottom: scale(20),
+                  paddingBottom: scale(0),
                 }
               : { flexGrow: 1 },
           ]}
@@ -1015,7 +1015,7 @@ export default function DuelFilterScreen() {
           <View
             style={[
               styles.paginationContainer,
-              isDesktop && { marginTop: scale(75), marginBottom: scale(4) },
+              isDesktop && { marginTop: scale(120), marginBottom: scale(4) },
             ]}
           >
             {filterCards.map((_, index) => {
