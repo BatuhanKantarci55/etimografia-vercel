@@ -20,7 +20,7 @@ export default function UserProfileHeader({
   onTabPress,
 }: UserProfileHeaderProps) {
   const { colors } = useTheme();
-  const { scale } = useResponsive();
+  const { scale, isDesktop } = useResponsive();
 
   // 4 bölmeli istatistikler
   const statsData = {
@@ -38,15 +38,20 @@ export default function UserProfileHeader({
   ];
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { zIndex: 1, elevation: 1, position: "relative" },
+      ]}
+    >
       {/* Ad Soyad */}
       <CustomText
         style={[
           styles.nameText,
           {
-            fontSize: scale(24),
+            fontSize: scale(isDesktop ? 18 : 24),
             color: colors.text,
-            marginBottom: scale(15),
+            marginBottom: scale(isDesktop ? 8 : 15),
           },
         ]}
       >
@@ -54,7 +59,12 @@ export default function UserProfileHeader({
       </CustomText>
 
       {/* 4 Bölmeli İstatistikler */}
-      <View style={[styles.statsContainer, { marginBottom: scale(20) }]}>
+      <View
+        style={[
+          styles.statsContainer,
+          { marginBottom: scale(isDesktop ? 12 : 20) },
+        ]}
+      >
         {tabs.map((tab, index) => (
           <TouchableOpacity
             key={tab.key}
@@ -66,7 +76,7 @@ export default function UserProfileHeader({
               style={[
                 styles.statNumber,
                 {
-                  fontSize: scale(22),
+                  fontSize: scale(isDesktop ? 16 : 22),
                   color: colors.text,
                 },
               ]}
@@ -77,7 +87,7 @@ export default function UserProfileHeader({
               style={[
                 styles.statLabel,
                 {
-                  fontSize: scale(12),
+                  fontSize: scale(isDesktop ? 10 : 12),
                   color: colors.text + "CC",
                 },
               ]}

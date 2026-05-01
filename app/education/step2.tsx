@@ -91,20 +91,48 @@ export default function Step2Screen() {
   useEffect(() => {
     console.log(`📚 Step2 yükleniyor - Unit: ${unitId}, Stage: ${stageId}`);
 
-    const learningWords = getLearningWordsForCurrentStage();
+    // Context'ten kullanıcının step 1'de öğrenmek için seçtiği kelimeleri alıyoruz
+    let currentLearningWords = getLearningWordsForCurrentStage();
 
-    console.log(`📋 Öğrenilecek kelimeler: ${learningWords.length}`);
+    // KURAL: Eğer 6'dan az kelime seçildiyse listeyi aynı aşamadaki diğer kelimelerle 6'ya tamamla
+    if (currentLearningWords.length < 6) {
+      // Bu ünite ve aşamadaki tüm kelimeleri çekiyoruz
+      const allStageWords = wordsData.filter(
+        (w: Word) =>
+          w.word_unit === Number(unitId) && w.word_stage === Number(stageId),
+      );
 
-    setLearningWords(learningWords);
-    setWords(learningWords);
-    setMcProgress({ completed: 0, total: learningWords.length });
-    setMatchingProgress({ completed: 0, total: learningWords.length });
-    setDefinitionProgress({ completed: 0, total: learningWords.length });
+      // Zaten öğrenilecekler listesinde olan (kullanıcının seçtiği) kelimelerin ID'leri
+      const learningWordIds = currentLearningWords.map((w: Word) => w.id);
+
+      // Sadece çakışmayan (kullanıcının 'biliyorum' dedikleri) diğer kelimeler
+      const availableWords = allStageWords.filter(
+        (w: Word) => !learningWordIds.includes(w.id),
+      );
+
+      // Bu kelimeleri rastgele karıştır
+      const shuffledAvailable = availableWords.sort(() => Math.random() - 0.5);
+
+      // Kaç kelimeye daha ihtiyacımız var? (En fazla 6'ya ulaşmak için)
+      const neededCount = 6 - currentLearningWords.length;
+
+      // Eksik kelimeleri alıp öğrenilecekler listesine dahil ediyoruz
+      const additionalWords = shuffledAvailable.slice(0, neededCount);
+      currentLearningWords = [...currentLearningWords, ...additionalWords];
+    }
+
+    console.log(`📋 Öğrenilecek kelimeler: ${currentLearningWords.length}`);
+
+    setLearningWords(currentLearningWords);
+    setWords(currentLearningWords);
+    setMcProgress({ completed: 0, total: currentLearningWords.length });
+    setMatchingProgress({ completed: 0, total: currentLearningWords.length });
+    setDefinitionProgress({ completed: 0, total: currentLearningWords.length });
 
     setStats({
-      learning: learningWords.length,
+      learning: currentLearningWords.length,
       known: 0,
-      total: learningWords.length,
+      total: currentLearningWords.length,
     });
 
     setLoading(false);
@@ -260,6 +288,8 @@ export default function Step2Screen() {
     );
   }
 
+  // Bu ekran aslında 6'ya tamamlama koduyla hiçbir zaman çalışmayacaktır.
+  // Yine de tüm aşamanın tamamen boş olduğu ekstrem senaryolar için bir güvenlik yedeğidir.
   if (words.length === 0) {
     return (
       <BackgroundImage overlayOpacity={0.03}>
@@ -317,7 +347,6 @@ export default function Step2Screen() {
             },
           ]}
         >
-          {/* DEĞİŞİKLİK: Masaüstünde ilerleme barını ortalayabilmek için sol boşluk tutucunun (Timer alanı) genişliği, sağdaki X butonuyla tam eşitlendi (24px) */}
           <View
             style={[styles.timerContainer, isDesktop && { width: scale(24) }]}
           />
@@ -342,7 +371,6 @@ export default function Step2Screen() {
           </TouchableOpacity>
         </View>
 
-        {/* Ana İçerik */}
         <View style={styles.content}>
           {currentMode === "multiple-choice" && (
             <MultipleChoice
@@ -432,7 +460,6 @@ export default function Step2Screen() {
           )}
         </View>
 
-        {/* Çıkış Onay Modalı */}
         <Modal
           visible={exitModalVisible}
           transparent={true}
@@ -499,7 +526,6 @@ export default function Step2Screen() {
           </View>
         </Modal>
 
-        {/* Tamamlama Modalı */}
         <CompletionModal
           visible={completionVisible}
           onClose={handleCompletionClose}

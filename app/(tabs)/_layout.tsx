@@ -8,7 +8,7 @@ import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { useResponsive } from "@hooks/useResponsive";
-import { supabase } from "@lib/supabase"; // DEĞİŞİKLİK: Supabase eklendi
+import { supabase } from "@lib/supabase";
 import { getAvatarSource } from "@utils/avatarUtils";
 import { Redirect, router, usePathname } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -90,15 +90,16 @@ export default function TabsLayout() {
     loading: streakLoading,
     refreshStreak,
   } = useDailyStreak();
-  const dailyStreak = streakData?.current_streak || 0;
-  const completedTasks = 12; // Geçici Örnek Veri
+  // Kullanıcı yoksa misafir için sıfır göster
+  const dailyStreak = user ? streakData?.current_streak || 0 : 0;
+  const completedTasks = user ? 12 : 0; // Geçici Örnek Veri
 
   // Düello davetleri
   const { pendingRequests, activeSession } = useDuel();
   const [invitationVisible, setInvitationVisible] = useState(false);
   const [currentInvitation, setCurrentInvitation] = useState<any>(null);
 
-  // DEĞİŞİKLİK: Aylık Liderlik (Sağ Kenar Çubuğu İçin)
+  // Aylık Liderlik (Sağ Kenar Çubuğu İçin)
   const [leaderboardMode, setLeaderboardMode] = useState<"duel" | "practice">(
     "duel",
   );
@@ -147,14 +148,14 @@ export default function TabsLayout() {
     }
   }, [activeSession, pathname]);
 
-  // DEĞİŞİKLİK: Bilgisayarda isek aylık liderlik tablosunu çek
+  // Bilgisayarda isek aylık liderlik tablosunu çek
   useEffect(() => {
-    if (isDesktop && showRightSidebar && user) {
+    if (isDesktop && showRightSidebar) {
       fetchMonthlyLeaderboard();
     }
-  }, [isDesktop, showRightSidebar, user, leaderboardMode]);
+  }, [isDesktop, showRightSidebar, leaderboardMode]);
 
-  // DEĞİŞİKLİK: Aylık liderlik verisini Supabase'den çek
+  // Aylık liderlik verisini Supabase'den çek
   const fetchMonthlyLeaderboard = async () => {
     setLeaderboardLoading(true);
     try {
@@ -175,7 +176,7 @@ export default function TabsLayout() {
         )
         .eq("period", currentPeriod)
         .order(sortColumn, { ascending: false })
-        .limit(7); // Kenar çubuğu olduğu için ilk 7 kişiyi gösteriyoruz
+        .limit(7);
 
       if (error) {
         console.error("Liderlik sıralaması çekilirken hata:", error);
@@ -216,10 +217,8 @@ export default function TabsLayout() {
     );
   }
 
-  if (!user) {
-    return <Redirect href="/(auth)" />;
-  }
-
+  // MİSAFİR GİRİŞİNİ ENGELLEYEN Redirect KALDIRILDI!
+  // Yalnızca kullanıcı giriş yapmış ancak e-postasını doğrulamamışsa yönlendir.
   if (user && !user.email_confirmed_at) {
     return <Redirect href="/verify-email" />;
   }
@@ -495,7 +494,7 @@ export default function TabsLayout() {
                 { backgroundColor: colors.card, borderColor: colors.border },
               ]}
               activeOpacity={0.7}
-              onPress={() => refreshStreak()}
+              onPress={() => user && refreshStreak()}
             >
               <View
                 style={{
@@ -513,7 +512,7 @@ export default function TabsLayout() {
                     fontWeight: "bold",
                   }}
                 >
-                  {streakLoading ? "..." : dailyStreak}
+                  {streakLoading && user ? "..." : dailyStreak}
                 </CustomText>
               </View>
               <CustomText
@@ -579,7 +578,7 @@ export default function TabsLayout() {
             </TouchableOpacity>
           </View>
 
-          {/* DEĞİŞİKLİK: Aylık Liderlik Alanı ve Kutu İçi Seçim Menüsü */}
+          {/* Aylık Liderlik Alanı ve Kutu İçi Seçim Menüsü */}
           <View
             style={[
               styles.leaderboardCard,
@@ -742,6 +741,50 @@ export default function TabsLayout() {
               </CustomText>
             </TouchableOpacity>
           </View>
+
+          {/* MİSAFİR KULLANICILAR İÇİN GİRİŞ YAP KUTUSU */}
+          {!user && (
+            <TouchableOpacity
+              style={[
+                styles.loginActionBox,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
+              activeOpacity={0.8}
+              onPress={() => router.push("/(auth)")}
+            >
+              <View
+                style={[
+                  styles.loginActionIcon,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
+              >
+                <Ionicons name="log-in" size={24} color={colors.primary} />
+              </View>
+              <CustomText
+                style={[styles.loginActionTitle, { color: colors.text }]}
+              >
+                Daha Fazlasını Keşfet
+              </CustomText>
+              <CustomText
+                style={[styles.loginActionDesc, { color: colors.text + "80" }]}
+              >
+                İlerlemeni kaydetmek ve sıralamaya girmek için hemen giriş yap.
+              </CustomText>
+              <View
+                style={[
+                  styles.loginActionButton,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
+                <CustomText style={styles.loginActionButtonText}>
+                  Giriş Yap / Kayıt Ol
+                </CustomText>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -962,6 +1005,51 @@ const styles = StyleSheet.create({
   leaderboardPoints: {
     fontSize: 13,
     fontWeight: "500",
+  },
+  // Masaüstü Giriş Yap Kutusu Stilleri
+  loginActionBox: {
+    marginTop: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  loginActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  loginActionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  loginActionDesc: {
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  loginActionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    width: "100%",
+    alignItems: "center",
+  },
+  loginActionButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 14,
   },
   // Mobil Alt Çubuk Stilleri
   tabBar: {

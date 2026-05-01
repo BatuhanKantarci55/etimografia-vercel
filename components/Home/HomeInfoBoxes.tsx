@@ -1,4 +1,3 @@
-// components/Home/HomeInfoBoxes.tsx
 import CustomText from "@components/CustomText";
 import { useAuth } from "@contexts/AuthContext";
 import { useDailyStreak } from "@contexts/DailyStreakContext";
@@ -23,7 +22,7 @@ export default function HomeInfoBoxes() {
   } = useDailyStreak();
 
   const [avatarIndex, setAvatarIndex] = useState(0);
-  const [username, setUsername] = useState("Kullanıcı");
+  const [username, setUsername] = useState("Misafir");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,8 +32,9 @@ export default function HomeInfoBoxes() {
     );
   }, [streakData]);
 
-  const dailyStreak = streakData?.current_streak || 0;
-  const completedTasks = 12;
+  // Kullanıcı yoksa misafir değerlerini kullan
+  const dailyStreak = user ? streakData?.current_streak || 0 : 0;
+  const completedTasks = user ? 12 : 0; // Geçici Örnek Veri
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -63,45 +63,50 @@ export default function HomeInfoBoxes() {
   };
 
   useEffect(() => {
+    if (!user) {
+      setUsername("Misafir");
+      setAvatarIndex(0);
+      setLoading(false);
+      return;
+    }
+
     fetchProfile();
 
-    if (user) {
-      const subscription = supabase
-        .channel("profile-changes")
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "profiles",
-            filter: `id=eq.${user.id}`,
-          },
-          (payload) => {
-            const newProfile = payload.new;
-            if (newProfile.avatar_index !== undefined) {
-              setAvatarIndex(newProfile.avatar_index);
-            }
-            if (newProfile.username) {
-              setUsername(newProfile.username);
-            }
-          },
-        )
-        .subscribe();
+    const subscription = supabase
+      .channel("profile-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newProfile = payload.new;
+          if (newProfile.avatar_index !== undefined) {
+            setAvatarIndex(newProfile.avatar_index);
+          }
+          if (newProfile.username) {
+            setUsername(newProfile.username);
+          }
+        },
+      )
+      .subscribe();
 
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [user]);
 
   useEffect(() => {
-    refreshStreak();
-  }, []);
+    if (user) {
+      refreshStreak();
+    }
+  }, [user]);
 
   const avatarSource = getAvatarSource(avatarIndex);
 
-  // DEĞİŞİKLİK: Masaüstünde bu alan tamamen boş render edilir. (Orta kısımdan kutuları tamamen kaldırıyoruz)
-  // Kutuların işlevleri _layout.tsx içinde yan çubuklara taşınmıştır.
   if (isDesktop) {
     return null;
   }
@@ -150,7 +155,9 @@ export default function HomeInfoBoxes() {
             },
           ]}
           activeOpacity={0.7}
-          onPress={() => router.push("/profile")}
+          onPress={() =>
+            user ? router.push("/profile") : router.push("/(auth)")
+          }
         >
           <View style={styles.profileContent}>
             <View style={styles.avatarContainer}>
@@ -169,7 +176,7 @@ export default function HomeInfoBoxes() {
               style={[
                 styles.username,
                 {
-                  color: colors.text,
+                  color: user ? colors.text : colors.primary,
                   fontSize: profileFontSize,
                   fontWeight: "600",
                 },
@@ -177,7 +184,7 @@ export default function HomeInfoBoxes() {
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {username}
+              {user ? username : "Giriş Yap"}
             </CustomText>
           </View>
         </TouchableOpacity>
@@ -269,7 +276,7 @@ export default function HomeInfoBoxes() {
             },
           ]}
           activeOpacity={0.7}
-          onPress={() => refreshStreak()}
+          onPress={() => user && refreshStreak()}
         >
           <View style={styles.dailyContent}>
             <Ionicons name="flame" size={dailyIconSize} color="#FF6B6B" />
@@ -284,7 +291,7 @@ export default function HomeInfoBoxes() {
                   },
                 ]}
               >
-                {streakLoading ? "..." : dailyStreak}
+                {streakLoading && user ? "..." : dailyStreak}
               </CustomText>
               <CustomText
                 style={[

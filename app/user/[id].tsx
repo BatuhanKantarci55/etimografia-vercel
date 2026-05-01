@@ -14,14 +14,14 @@ import UserProfileTabs from "components/Profile/UserProfileTabs";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    ImageBackground,
-    Platform,
-    StatusBar,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  ImageBackground,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // Banner görsellerini import et
@@ -48,29 +48,6 @@ const allBanners = [
   require("../../assets/images/banners/wolf.png"),
 ];
 
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
-
 type UserProfile = {
   id: string;
   username: string;
@@ -87,7 +64,7 @@ type UserProfile = {
 export default function UserProfileScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
-  const { scale } = useResponsive();
+  const { scale, isDesktop } = useResponsive();
   const { id } = useLocalSearchParams();
   const userId = Array.isArray(id) ? id[0] : id;
 
@@ -237,10 +214,20 @@ export default function UserProfileScreen() {
     extrapolate: "clamp",
   });
 
-  const navbarHeight = Platform.OS === "ios" ? scale(90) : scale(70);
-  const statusBarHeight =
-    Platform.OS === "ios" ? scale(40) : StatusBar.currentHeight || scale(20);
-  const iconSize = scale(40);
+  const navbarBorderRadius = scrollY.interpolate({
+    inputRange: [0, 150, 200],
+    outputRange: [0, 0, scale(16)],
+    extrapolate: "clamp",
+  });
+
+  const navbarHeight = scale(isDesktop ? 40 : 70);
+  const statusBarHeight = isDesktop
+    ? 0
+    : Platform.OS === "ios"
+      ? scale(40)
+      : StatusBar.currentHeight || scale(20);
+
+  const iconSize = scale(isDesktop ? 28 : 40);
 
   if (loading) {
     return (
@@ -274,8 +261,8 @@ export default function UserProfileScreen() {
 
   const currentBanner = allBanners[profile.banner_index || 0];
 
-  return (
-    <BackgroundImage overlayOpacity={0.03}>
+  const screenContent = (
+    <>
       {/* Sabit Navbar */}
       <Animated.View
         style={[
@@ -283,6 +270,11 @@ export default function UserProfileScreen() {
           {
             height: navbarHeight,
             paddingTop: statusBarHeight,
+            justifyContent: isDesktop ? "center" : "flex-start",
+          },
+          isDesktop && {
+            borderBottomLeftRadius: navbarBorderRadius,
+            borderBottomRightRadius: navbarBorderRadius,
           },
         ]}
       >
@@ -327,29 +319,53 @@ export default function UserProfileScreen() {
               <Animated.View style={{ opacity: normalIconsOpacity }}>
                 <Ionicons
                   name="arrow-back"
-                  size={scale(24)}
+                  size={scale(isDesktop ? 18 : 24)}
                   color={colors.text || "#000000"}
                 />
               </Animated.View>
               <Animated.View
                 style={[styles.whiteIcon, { opacity: whiteIconsOpacity }]}
               >
-                <Ionicons name="arrow-back" size={scale(24)} color="white" />
+                <Ionicons
+                  name="arrow-back"
+                  size={scale(isDesktop ? 18 : 24)}
+                  color="white"
+                />
               </Animated.View>
             </TouchableOpacity>
           </View>
 
-          {/* Orta: Kullanıcı adı - HER ZAMAN GÖRÜNÜR */}
+          {/* Orta: Kullanıcı adı */}
           <View style={styles.navbarCenter}>
-            <CustomText
-              style={{
-                fontSize: scale(18),
-                fontWeight: "600",
-                color: "white",
-              }}
+            {/* Normal renkli metin */}
+            <Animated.View
+              style={{ position: "absolute", opacity: normalIconsOpacity }}
             >
-              {profile.username}
-            </CustomText>
+              <CustomText
+                style={{
+                  fontSize: scale(isDesktop ? 14 : 18),
+                  fontWeight: "600",
+                  color: colors.text,
+                }}
+              >
+                {profile.username}
+              </CustomText>
+            </Animated.View>
+
+            {/* Beyaz metin */}
+            <Animated.View
+              style={{ position: "absolute", opacity: whiteIconsOpacity }}
+            >
+              <CustomText
+                style={{
+                  fontSize: scale(isDesktop ? 14 : 18),
+                  fontWeight: "600",
+                  color: "white",
+                }}
+              >
+                {profile.username}
+              </CustomText>
+            </Animated.View>
           </View>
 
           {/* Sağ: Takip butonu (kendi profilimiz değilse) */}
@@ -398,7 +414,12 @@ export default function UserProfileScreen() {
             />
           </View>
 
-          <View style={[styles.contentContainer, { paddingTop: scale(60) }]}>
+          <View
+            style={[
+              styles.contentContainer,
+              { paddingTop: scale(isDesktop ? 50 : 60) },
+            ]}
+          >
             <UserProfileHeader
               profile={profile}
               activeTab={activeTab}
@@ -411,8 +432,8 @@ export default function UserProfileScreen() {
                   styles.bioText,
                   {
                     color: colors.text + "CC",
-                    fontSize: scale(14),
-                    lineHeight: scale(20),
+                    fontSize: scale(isDesktop ? 12 : 14),
+                    lineHeight: scale(isDesktop ? 18 : 20),
                   },
                 ]}
               >
@@ -430,7 +451,33 @@ export default function UserProfileScreen() {
           </View>
         </PullToRefreshScroll>
       </View>
-    </BackgroundImage>
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <BackgroundImage overlayOpacity={0.03}>
+        <View
+          style={{ flex: 1, flexDirection: "row", justifyContent: "center" }}
+        >
+          <View
+            style={{
+              flex: 1,
+              width: "100%",
+              maxWidth: 650,
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {screenContent}
+          </View>
+        </View>
+      </BackgroundImage>
+    );
+  }
+
+  return (
+    <BackgroundImage overlayOpacity={0.03}>{screenContent}</BackgroundImage>
   );
 }
 
@@ -502,7 +549,6 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     position: "relative",
-    minHeight: 120,
   },
   contentContainer: {
     paddingHorizontal: 20,

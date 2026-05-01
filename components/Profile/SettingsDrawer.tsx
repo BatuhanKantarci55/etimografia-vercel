@@ -1,8 +1,10 @@
+import AuthRequiredModal from "@components/AuthRequiredModal";
 import CustomText from "@components/CustomText";
 import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -36,8 +38,8 @@ export default function SettingsDrawer({
   const [notifications, setNotifications] = useState(true);
   const [soundEffects, setSoundEffects] = useState(true);
   const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
-  // DEĞİŞİKLİK: Çekmece genişliği masaüstünde daha da daraltıldı (280 -> 240)
   const drawerWidth = isDesktop ? scale(240) : SCREEN_WIDTH * 0.85;
 
   // Animasyon için shared values
@@ -142,6 +144,12 @@ export default function SettingsDrawer({
 
   const handleEditProfile = () => {
     closeDrawer(); // Önce drawer'ı kapat
+    if (!user) {
+      setTimeout(() => {
+        setAuthModalVisible(true);
+      }, 300);
+      return;
+    }
     setTimeout(() => {
       setEditProfileVisible(true); // Sonra edit modalını aç
     }, 300);
@@ -224,7 +232,7 @@ export default function SettingsDrawer({
               >
                 <CustomText
                   style={{
-                    fontSize: scale(isDesktop ? 14 : 24), // DEĞİŞİKLİK
+                    fontSize: scale(isDesktop ? 14 : 24),
                     color: colors.text,
                     fontWeight: "600",
                   }}
@@ -258,9 +266,9 @@ export default function SettingsDrawer({
                       styles.avatar,
                       {
                         backgroundColor: colors.primary,
-                        width: scale(isDesktop ? 32 : 60), // DEĞİŞİKLİK
-                        height: scale(isDesktop ? 32 : 60), // DEĞİŞİKLİK
-                        borderRadius: scale(isDesktop ? 16 : 30), // DEĞİŞİKLİK
+                        width: scale(isDesktop ? 32 : 60),
+                        height: scale(isDesktop ? 32 : 60),
+                        borderRadius: scale(isDesktop ? 16 : 30),
                         marginRight: scale(isDesktop ? 8 : 15),
                         justifyContent: "center",
                         alignItems: "center",
@@ -273,9 +281,11 @@ export default function SettingsDrawer({
                         color: "white",
                       }}
                     >
-                      {profile?.username?.charAt(0)?.toUpperCase() ||
-                        user?.email?.charAt(0)?.toUpperCase() ||
-                        "U"}
+                      {user
+                        ? profile?.username?.charAt(0)?.toUpperCase() ||
+                          user?.email?.charAt(0)?.toUpperCase() ||
+                          "U"
+                        : "M"}
                     </CustomText>
                   </View>
                   <View style={{ flex: 1 }}>
@@ -285,18 +295,20 @@ export default function SettingsDrawer({
                         color: colors.text,
                       }}
                     >
-                      {profile?.username ||
-                        user?.user_metadata?.username ||
-                        "Kullanıcı"}
+                      {user
+                        ? profile?.username ||
+                          user?.user_metadata?.username ||
+                          "Kullanıcı"
+                        : "Misafir"}
                     </CustomText>
                     <CustomText
                       style={{
-                        fontSize: scale(isDesktop ? 10 : 14), // DEĞİŞİKLİK
+                        fontSize: scale(isDesktop ? 10 : 14),
                         color: colors.text + "80",
                         marginTop: scale(2),
                       }}
                     >
-                      {user?.email}
+                      {user ? user?.email : "Giriş yapılmadı"}
                     </CustomText>
                   </View>
                 </View>
@@ -307,7 +319,7 @@ export default function SettingsDrawer({
                     styles.menuSection,
                     {
                       paddingHorizontal: scale(isDesktop ? 10 : 20),
-                      marginTop: scale(isDesktop ? 6 : 20), // DEĞİŞİKLİK
+                      marginTop: scale(isDesktop ? 6 : 20),
                     },
                   ]}
                 >
@@ -315,9 +327,9 @@ export default function SettingsDrawer({
                     style={[
                       styles.sectionTitle,
                       {
-                        fontSize: scale(isDesktop ? 9 : 14), // DEĞİŞİKLİK
+                        fontSize: scale(isDesktop ? 9 : 14),
                         color: colors.text + "80",
-                        marginBottom: scale(isDesktop ? 4 : 10), // DEĞİŞİKLİK
+                        marginBottom: scale(isDesktop ? 4 : 10),
                         fontWeight: "600",
                         letterSpacing: 0.5,
                       },
@@ -332,9 +344,9 @@ export default function SettingsDrawer({
                       styles.menuItem,
                       {
                         backgroundColor: colors.card,
-                        padding: scale(isDesktop ? 8 : 15), // DEĞİŞİKLİK
+                        padding: scale(isDesktop ? 8 : 15),
                         borderRadius: scale(isDesktop ? 6 : 12),
-                        marginBottom: scale(isDesktop ? 4 : 10), // DEĞİŞİKLİK
+                        marginBottom: scale(isDesktop ? 4 : 10),
                       },
                     ]}
                     onPress={toggleTheme}
@@ -344,12 +356,12 @@ export default function SettingsDrawer({
                     >
                       <Ionicons
                         name={themeMode === "light" ? "sunny" : "moon"}
-                        size={scale(isDesktop ? 12 : 20)} // DEĞİŞİKLİK
+                        size={scale(isDesktop ? 12 : 20)}
                         color={colors.primary}
                       />
                       <CustomText
                         style={{
-                          fontSize: scale(isDesktop ? 11 : 16), // DEĞİŞİKLİK
+                          fontSize: scale(isDesktop ? 11 : 16),
                           color: colors.text,
                           marginLeft: scale(isDesktop ? 6 : 12),
                         }}
@@ -361,7 +373,7 @@ export default function SettingsDrawer({
                     </View>
                     <Ionicons
                       name="chevron-forward"
-                      size={scale(isDesktop ? 12 : 20)} // DEĞİŞİKLİK
+                      size={scale(isDesktop ? 12 : 20)}
                       color={colors.text + "60"}
                     />
                   </TouchableOpacity>
@@ -374,7 +386,7 @@ export default function SettingsDrawer({
                         backgroundColor: colors.card,
                         padding: scale(isDesktop ? 8 : 15),
                         borderRadius: scale(isDesktop ? 6 : 12),
-                        marginBottom: scale(isDesktop ? 6 : 15), // Kısım sonu
+                        marginBottom: scale(isDesktop ? 6 : 15),
                       },
                     ]}
                     onPress={() => {
@@ -472,7 +484,7 @@ export default function SettingsDrawer({
                         true: colors.primary,
                       }}
                       thumbColor="white"
-                      style={isDesktop ? { transform: [{ scale: 0.55 }] } : {}} // DEĞİŞİKLİK: Masaüstünde Switch boyutunu zarifleştir
+                      style={isDesktop ? { transform: [{ scale: 0.55 }] } : {}}
                     />
                   </View>
 
@@ -514,7 +526,7 @@ export default function SettingsDrawer({
                         true: colors.primary,
                       }}
                       thumbColor="white"
-                      style={isDesktop ? { transform: [{ scale: 0.55 }] } : {}} // DEĞİŞİKLİK
+                      style={isDesktop ? { transform: [{ scale: 0.55 }] } : {}}
                     />
                   </View>
                 </View>
@@ -705,14 +717,23 @@ export default function SettingsDrawer({
                     style={[
                       styles.signOutButton,
                       {
-                        backgroundColor: "#FF3B30" + "15",
-                        padding: scale(isDesktop ? 8 : 16), // DEĞİŞİKLİK
-                        borderRadius: scale(isDesktop ? 6 : 12), // DEĞİŞİKLİK
+                        backgroundColor: user
+                          ? "#FF3B3015"
+                          : colors.primary + "15",
+                        padding: scale(isDesktop ? 8 : 16),
+                        borderRadius: scale(isDesktop ? 6 : 12),
                         borderWidth: 1,
-                        borderColor: "#FF3B30" + "30",
+                        borderColor: user ? "#FF3B3030" : colors.primary + "30",
                       },
                     ]}
-                    onPress={handleSignOut}
+                    onPress={() => {
+                      if (!user) {
+                        closeDrawer();
+                        router.push("/(auth)");
+                      } else {
+                        handleSignOut();
+                      }
+                    }}
                   >
                     <View
                       style={{
@@ -722,30 +743,30 @@ export default function SettingsDrawer({
                       }}
                     >
                       <Ionicons
-                        name="log-out-outline"
-                        size={scale(isDesktop ? 14 : 22)} // DEĞİŞİKLİK
-                        color="#FF3B30"
+                        name={user ? "log-out-outline" : "log-in-outline"}
+                        size={scale(isDesktop ? 14 : 22)}
+                        color={user ? "#FF3B30" : colors.primary}
                       />
                       <CustomText
                         style={{
-                          fontSize: scale(isDesktop ? 12 : 18), // DEĞİŞİKLİK
-                          color: "#FF3B30",
-                          marginLeft: scale(isDesktop ? 4 : 10), // DEĞİŞİKLİK
+                          fontSize: scale(isDesktop ? 12 : 18),
+                          color: user ? "#FF3B30" : colors.primary,
+                          marginLeft: scale(isDesktop ? 4 : 10),
                           fontWeight: "600",
                         }}
                       >
-                        Çıkış Yap
+                        {user ? "Çıkış Yap" : "Giriş Yap"}
                       </CustomText>
                     </View>
                   </TouchableOpacity>
 
                   <CustomText
                     style={{
-                      fontSize: scale(isDesktop ? 8 : 12), // DEĞİŞİKLİK
+                      fontSize: scale(isDesktop ? 8 : 12),
                       color: colors.text + "40",
                       textAlign: "center",
-                      marginTop: scale(isDesktop ? 6 : 16), // DEĞİŞİKLİK
-                      marginBottom: scale(isDesktop ? 6 : 20), // DEĞİŞİKLİK
+                      marginTop: scale(isDesktop ? 6 : 16),
+                      marginBottom: scale(isDesktop ? 6 : 20),
                     }}
                   >
                     Versiyon 1.0.0
@@ -761,6 +782,11 @@ export default function SettingsDrawer({
       <ProfileEditModal
         visible={editProfileVisible}
         onClose={() => setEditProfileVisible(false)}
+      />
+
+      <AuthRequiredModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
       />
     </>
   );

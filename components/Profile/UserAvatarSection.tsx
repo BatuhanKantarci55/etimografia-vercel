@@ -27,8 +27,6 @@ const allAvatars = [
   require("../../assets/images/avatars/sheep1.png"),
 ];
 
-const BANNER_HEIGHT = SCREEN_WIDTH / 3;
-
 interface UserAvatarSectionProps {
   scrollY: Animated.Value;
   avatarScale: Animated.AnimatedInterpolation<number>;
@@ -45,47 +43,57 @@ export default function UserAvatarSection({
   avatarIndex,
 }: UserAvatarSectionProps) {
   const { colors } = useTheme();
-  const { scale } = useResponsive();
+  const { scale, isDesktop } = useResponsive();
 
   const currentAvatar = allAvatars[avatarIndex % allAvatars.length];
 
+  const mainAvatarSize = scale(isDesktop ? 80 : 100);
+  const mainAvatarRadius = mainAvatarSize / 2;
+
   return (
-    <Animated.View
-      style={[
-        styles.avatarContainer,
-        {
-          transform: [{ scale: avatarScale }, { translateY: avatarTranslateY }],
-          opacity: avatarOpacity,
-          top: BANNER_HEIGHT - scale(50), // Banner yüksekliğinin yarısı - avatar yarısı
-        },
-      ]}
-    >
-      <View
+    <View style={{ position: "relative", zIndex: 100, elevation: 100 }}>
+      <Animated.View
         style={[
-          styles.avatarTouchable,
+          styles.avatarContainer,
           {
-            width: scale(100),
-            height: scale(100),
-            borderRadius: scale(50),
+            transform: [
+              { scale: avatarScale },
+              { translateY: avatarTranslateY },
+            ],
+            opacity: avatarOpacity,
+            top: -mainAvatarRadius,
+            zIndex: 100,
+            elevation: 100,
           },
         ]}
       >
-        <Image
-          source={currentAvatar}
+        <View
           style={[
-            styles.avatarImage,
+            styles.avatarTouchable,
             {
-              width: scale(100),
-              height: scale(100),
-              borderRadius: scale(50),
-              borderWidth: scale(4),
-              borderColor: colors.background,
+              width: mainAvatarSize,
+              height: mainAvatarSize,
+              borderRadius: mainAvatarRadius,
             },
           ]}
-          resizeMode="cover"
-        />
-      </View>
-    </Animated.View>
+        >
+          <Image
+            source={currentAvatar}
+            style={[
+              styles.avatarImage,
+              {
+                width: mainAvatarSize,
+                height: mainAvatarSize,
+                borderRadius: mainAvatarRadius,
+                borderWidth: scale(isDesktop ? 3 : 4),
+                borderColor: colors.background,
+              },
+            ]}
+            resizeMode="cover"
+          />
+        </View>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -93,7 +101,7 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "absolute",
     alignSelf: "center",
-    zIndex: 20,
+    zIndex: 100,
   },
   avatarTouchable: {
     justifyContent: "center",

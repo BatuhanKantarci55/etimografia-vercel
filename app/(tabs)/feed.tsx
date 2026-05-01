@@ -1,3 +1,4 @@
+import AuthRequiredModal from "@components/AuthRequiredModal";
 import BackgroundImage from "@components/BackgroundImage";
 import CustomText from "@components/CustomText";
 import CreatePostModal from "@components/Feed/CreatePostModal";
@@ -23,7 +24,7 @@ import {
 } from "react-native";
 
 export default function FeedScreen() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { followingIds } = useFollow();
   const {
     posts,
@@ -44,6 +45,7 @@ export default function FeedScreen() {
   const { scale, isDesktop } = useResponsive();
   const [activeTab, setActiveTab] = useState("explore");
   const [createPostVisible, setCreatePostVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
   const [followingPosts, setFollowingPosts] = useState<any[]>([]);
 
   const scrollViewRef = useRef<any>(null);
@@ -61,14 +63,26 @@ export default function FeedScreen() {
   const [showTabs, setShowTabs] = useState(true);
 
   const handlePostPress = () => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
     setCreatePostVisible(true);
   };
 
   const handleMessagePress = () => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
     router.push("/messages");
   };
 
   const handleLike = async (postId: string, isLiked: boolean) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
     if (isLiked) {
       await unlikePost(postId);
     } else {
@@ -77,6 +91,10 @@ export default function FeedScreen() {
   };
 
   const handleShare = async (postId: string, isShared: boolean) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
     if (isShared) {
       await unsharePost(postId);
     } else {
@@ -85,6 +103,10 @@ export default function FeedScreen() {
   };
 
   const handleSave = async (postId: string, isSaved: boolean) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
     if (isSaved) {
       await unsavePost(postId);
     } else {
@@ -93,6 +115,10 @@ export default function FeedScreen() {
   };
 
   const handleComment = (postId: string) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
     console.log("Yorum butonuna tıklandı:", postId);
   };
 
@@ -106,6 +132,10 @@ export default function FeedScreen() {
   };
 
   const handleQuote = async (postId: string, quoteText: string) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return false;
+    }
     const { error } = await quotePost(postId, quoteText);
     if (error) {
       Alert.alert("Hata", "Alıntı yapılırken bir hata oluştu");
@@ -119,6 +149,9 @@ export default function FeedScreen() {
   };
 
   const getFilteredPosts = useCallback(() => {
+    // Giriş yapmamış kullanıcı hiçbir sekmede gönderi göremez
+    if (!user) return [];
+
     switch (activeTab) {
       case "explore":
         return posts;
@@ -129,7 +162,7 @@ export default function FeedScreen() {
       default:
         return posts;
     }
-  }, [activeTab, posts, followingPosts, savedPosts]);
+  }, [activeTab, posts, followingPosts, savedPosts, user]);
 
   const filteredPosts = getFilteredPosts();
 
@@ -235,12 +268,11 @@ export default function FeedScreen() {
           <View style={styles.navbarCenter}>
             <CustomText
               style={{
-                // DEĞİŞİKLİK: Masaüstündeki kullanıcı adı boyutu (14 -> 12) küçültüldü
                 fontSize: scale(isDesktop ? 12 : 18),
                 color: colors.text,
               }}
             >
-              {profile?.username || "Akış"}
+              {user ? profile?.username || "Akış" : "Akış"}
             </CustomText>
           </View>
 
@@ -313,19 +345,22 @@ export default function FeedScreen() {
               style={[
                 styles.emptyText,
                 {
-                  fontSize: scale(isDesktop ? 10 : 18),
+                  fontSize: scale(isDesktop ? 10 : 16),
                   color: colors.text + "60",
                   marginTop: scale(16),
                   textAlign: "center",
                 },
               ]}
             >
-              {activeTab === "saved" && "Henüz kaydedilmiş gönderiniz yok"}
-              {activeTab === "following" &&
-                "Takip ettiğiniz kişilerin gönderileri burada görünecek"}
-              {activeTab === "explore" && "Gönderi bulunamadı"}
+              {!user
+                ? "Gönderileri görmek için giriş yapın."
+                : activeTab === "saved"
+                  ? "Henüz kaydedilmiş gönderiniz yok."
+                  : activeTab === "following"
+                    ? "Takip ettiğiniz kişilerin gönderileri burada görünecek."
+                    : "Gönderi bulunamadı."}
             </CustomText>
-            {activeTab === "explore" && (
+            {activeTab === "explore" && user && (
               <TouchableOpacity
                 style={[
                   styles.createButton,
@@ -373,6 +408,11 @@ export default function FeedScreen() {
       <CreatePostModal
         visible={createPostVisible}
         onClose={() => setCreatePostVisible(false)}
+      />
+
+      <AuthRequiredModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
       />
     </>
   );

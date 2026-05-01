@@ -87,7 +87,7 @@ export default function ProfileScreen() {
     profile?.avatar_index || 0,
   );
 
-  // DÜZELTME: Veritabanından profil bilgisi asenkron olarak yüklendiğinde (veya güncellendiğinde) anlık olarak arayüze yansıtması için eklendi.
+  // Veritabanından profil bilgisi asenkron olarak yüklendiğinde anlık olarak arayüze yansıtması için
   useEffect(() => {
     if (profile) {
       setSelectedBannerIndex(profile.banner_index || 0);
@@ -100,19 +100,21 @@ export default function ProfileScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refreshProfile();
+    if (user) {
+      await refreshProfile();
+      Alert.alert("✅ Sayfa Yenilendi", "Profil bilgileriniz güncellendi.");
+    }
     setRefreshing(false);
-    Alert.alert("✅ Sayfa Yenilendi", "Profil bilgileriniz güncellendi.");
   };
 
   const handleBannerChange = async (index: number) => {
     setSelectedBannerIndex(index);
-    await updateProfile({ banner_index: index });
+    if (user) await updateProfile({ banner_index: index });
   };
 
   const handleAvatarChange = async (index: number) => {
     setSelectedAvatarIndex(index);
-    await updateProfile({ avatar_index: index });
+    if (user) await updateProfile({ avatar_index: index });
   };
 
   // Seçili banner
@@ -281,7 +283,7 @@ export default function ProfileScreen() {
                   color: colors.text,
                 }}
               >
-                {profile?.username || "Profil"}
+                {user ? profile?.username || "Profil" : "Misafir"}
               </CustomText>
             </Animated.View>
 
@@ -296,7 +298,7 @@ export default function ProfileScreen() {
                   color: "white",
                 }}
               >
-                {profile?.username || "Profil"}
+                {user ? profile?.username || "Profil" : "Misafir"}
               </CustomText>
             </Animated.View>
           </View>
@@ -389,8 +391,10 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                {profile?.bio ||
-                  "Henüz bir biyografi eklenmemiş. Biyografinizi düzenlemek için ayarlara gidin."}
+                {user
+                  ? profile?.bio ||
+                    "Henüz bir biyografi eklenmemiş. Biyografinizi düzenlemek için ayarlara gidin."
+                  : "Kendini tanıtmak ve diğer kullanıcılarla etkileşime geçmek için hemen giriş yap!"}
               </CustomText>
             </View>
 

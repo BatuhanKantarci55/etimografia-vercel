@@ -1,7 +1,7 @@
+import { useResponsive } from "@hooks/useResponsive";
 import { Animated, Dimensions, Image, StyleSheet, View } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const BANNER_HEIGHT = SCREEN_WIDTH / 3;
 
 // Banner görsellerini import et
 const allBanners = [
@@ -38,31 +38,40 @@ export default function UserBannerSection({
   bannerOpacity,
   bannerIndex,
 }: UserBannerSectionProps) {
+  const { scale, isDesktop } = useResponsive();
   const currentBanner = allBanners[bannerIndex % allBanners.length];
 
+  const bannerHeight = isDesktop ? scale(120) : SCREEN_WIDTH / 3;
+
   return (
-    <Animated.View
-      style={[
-        styles.bannerContainer,
-        {
-          height: BANNER_HEIGHT,
-          opacity: bannerOpacity,
-        },
-      ]}
-    >
-      <View style={styles.bannerTouchable}>
-        <Image
-          source={currentBanner}
-          style={[
-            styles.bannerImage,
-            {
-              height: BANNER_HEIGHT,
-            },
-          ]}
-          resizeMode="cover"
-        />
-      </View>
-    </Animated.View>
+    <View style={{ position: "relative", zIndex: 10 }}>
+      <Animated.View
+        style={[
+          styles.bannerContainer,
+          {
+            height: bannerHeight,
+            opacity: bannerOpacity,
+          },
+          isDesktop && {
+            borderBottomLeftRadius: scale(16),
+            borderBottomRightRadius: scale(16),
+          },
+        ]}
+      >
+        <View style={styles.bannerTouchable}>
+          <Image
+            source={currentBanner}
+            style={[
+              styles.bannerImage,
+              {
+                height: bannerHeight,
+              },
+            ]}
+            resizeMode="cover"
+          />
+        </View>
+      </Animated.View>
+    </View>
   );
 }
 

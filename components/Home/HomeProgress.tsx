@@ -1,4 +1,5 @@
 import CustomText from "@components/CustomText";
+import { useAuth } from "@contexts/AuthContext";
 import { useEducation } from "@contexts/EducationContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,7 +46,7 @@ export default function HomeProgress({
   onUnitChange,
 }: HomeProgressProps) {
   const { colors, themeMode } = useTheme();
-  // isDesktop eklendi
+  const { user } = useAuth();
   const { scale, isDesktop } = useResponsive();
   const { educationScore } = useEducation();
   const [modalVisible, setModalVisible] = useState(false);
@@ -174,12 +175,9 @@ export default function HomeProgress({
     step3Anim.setValue(0);
   }, []);
 
-  // MASAÜSTÜ ÖZEL KÜÇÜLTME DEĞERLERİ
-  // DEĞİŞİKLİK: 65% olan genişlik 72% yapılarak alan bir miktar büyütüldü.
   const containerWidth = isDesktop ? "72%" : "100%";
   const imageRadius = scale(isDesktop ? 12 : 16);
 
-  // Masaüstünde görselin kırpılmasını engellemek için 16:9 oranı kullanıldı
   const imageStyle = isDesktop
     ? {
         width: "100%" as const,
@@ -216,9 +214,10 @@ export default function HomeProgress({
     }
   };
 
-  // Toplam puan
-  const totalScore =
-    educationScore?.total_education_score?.toLocaleString() || "0";
+  // Toplam puan (Giriş yapmayan kullanıcılar için 0 gösterilir)
+  const totalScore = user
+    ? educationScore?.total_education_score?.toLocaleString() || "0"
+    : "0";
 
   const handleUnitSelect = (selectedUnit: number) => {
     if (onUnitChange) {
@@ -231,7 +230,7 @@ export default function HomeProgress({
       <View
         style={[
           styles.container,
-          { borderRadius: imageRadius }, // DEĞİŞİKLİK: Köşelerdeki sivri gölgeleri yok etmek için ana taşıyıcıya da kavis eklendi
+          { borderRadius: imageRadius },
           isDesktop && { width: containerWidth, alignSelf: "center" },
         ]}
       >
@@ -478,7 +477,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
-    backgroundColor: "transparent", // Gölgelerin doğru çalışması ve köşelerin kavisli olması için eklendi
+    backgroundColor: "transparent",
   },
   imageContainer: {
     width: "100%",

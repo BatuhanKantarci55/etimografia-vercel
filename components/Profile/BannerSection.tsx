@@ -1,5 +1,7 @@
+import AuthRequiredModal from "@components/AuthRequiredModal";
 import BottomSheetModal from "@components/BottomSheetModal";
 import CustomText from "@components/CustomText";
+import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
@@ -78,10 +80,21 @@ export default function BannerSection({
   isOwnProfile = true,
 }: BannerSectionProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { scale, isDesktop } = useResponsive();
   const [showBannerSelector, setShowBannerSelector] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   const currentBanner = allBanners[selectedBannerIndex];
+
+  const handlePress = () => {
+    if (!isOwnProfile) return;
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
+    setShowBannerSelector(true);
+  };
 
   const handleBannerSelect = (index: number) => {
     onBannerChange(index);
@@ -107,7 +120,7 @@ export default function BannerSection({
       >
         <TouchableOpacity
           style={styles.bannerTouchable}
-          onPress={() => isOwnProfile && setShowBannerSelector(true)}
+          onPress={handlePress}
           activeOpacity={isOwnProfile ? 0.8 : 1}
           disabled={!isOwnProfile}
         >
@@ -185,7 +198,6 @@ export default function BannerSection({
                   <CustomText
                     style={{
                       color: colors.text,
-                      // DÜZELTME: Masaüstü için banner adlarının boyutu daha da küçültüldü
                       fontSize: scale(isDesktop ? 10 : 14),
                       fontWeight: "500",
                     }}
@@ -213,6 +225,11 @@ export default function BannerSection({
           </ScrollView>
         </BottomSheetModal>
       )}
+
+      <AuthRequiredModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
     </View>
   );
 }

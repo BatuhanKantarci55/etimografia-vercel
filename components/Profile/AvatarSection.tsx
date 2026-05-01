@@ -1,4 +1,6 @@
+import AuthRequiredModal from "@components/AuthRequiredModal";
 import BottomSheetModal from "@components/BottomSheetModal";
+import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { useResponsive } from "@hooks/useResponsive";
 import { useState } from "react";
@@ -58,8 +60,10 @@ export default function AvatarSection({
   isOwnProfile = true,
 }: AvatarSectionProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { scale, isDesktop } = useResponsive();
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   const currentAvatar = allAvatars[selectedAvatarIndex];
 
@@ -68,6 +72,15 @@ export default function AvatarSection({
 
   const columns = isDesktop ? 5 : 4;
   const currentAvatarItemSize = isDesktop ? scale(55) : AVATAR_SIZE;
+
+  const handlePress = () => {
+    if (!isOwnProfile) return;
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
+    setShowAvatarSelector(true);
+  };
 
   const renderAvatarItem = ({ item, index }: { item: any; index: number }) => (
     <TouchableOpacity
@@ -104,7 +117,6 @@ export default function AvatarSection({
   );
 
   return (
-    // DÜZELTME: Tıklama çakışmalarını önlemek için z-index 100'e çekildi ve diğer bileşenlerden tamamen üstte tutuldu.
     <View style={{ position: "relative", zIndex: 100, elevation: 100 }}>
       <Animated.View
         style={[
@@ -130,7 +142,7 @@ export default function AvatarSection({
               borderRadius: mainAvatarRadius,
             },
           ]}
-          onPress={() => isOwnProfile && setShowAvatarSelector(true)}
+          onPress={handlePress}
           activeOpacity={isOwnProfile ? 0.8 : 1}
           disabled={!isOwnProfile}
         >
@@ -175,6 +187,11 @@ export default function AvatarSection({
           />
         </BottomSheetModal>
       )}
+
+      <AuthRequiredModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
     </View>
   );
 }

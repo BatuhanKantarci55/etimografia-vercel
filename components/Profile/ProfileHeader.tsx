@@ -18,7 +18,7 @@ export default function ProfileHeader({
   onTabPress,
   onTabSelect,
 }: ProfileHeaderProps) {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { stats } = useFollow();
   const { userPosts } = usePosts();
   const { colors } = useTheme();
@@ -32,12 +32,12 @@ export default function ProfileHeader({
     setPostCount(ownPostsCount);
   }, [userPosts]);
 
-  // 4 bölmeli istatistikler
+  // Misafir kullanıcı için 0 değerli 4 bölmeli istatistikler
   const statsData = {
-    gönderi: postCount,
-    takipçi: stats?.followers_count || 0,
-    rozet: 12, // Şimdilik mock
-    sıralama: 42, // Şimdilik mock
+    gönderi: user ? postCount : 0,
+    takipçi: user ? stats?.followers_count || 0 : 0,
+    rozet: user ? 12 : 0, // Şimdilik mock
+    sıralama: user ? 42 : 0, // Şimdilik mock
   };
 
   const tabs = [
@@ -55,7 +55,6 @@ export default function ProfileHeader({
   };
 
   return (
-    // DÜZELTME: Tıklamaları engellememesi için en alt katmana atandı (zIndex: 1)
     <View
       style={[
         styles.container,
@@ -73,7 +72,7 @@ export default function ProfileHeader({
           },
         ]}
       >
-        {profile?.full_name || "Ad Soyad"}
+        {user ? profile?.full_name || "Ad Soyad" : "Misafir"}
       </CustomText>
 
       {/* 4 Bölmeli İstatistikler */}

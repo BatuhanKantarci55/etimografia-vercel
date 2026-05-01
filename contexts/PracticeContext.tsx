@@ -260,38 +260,43 @@ export const PracticeProvider = ({
   // Alıştırma başlat
   const startPractice = useCallback(
     async (sessionFilters: PracticeFilters): Promise<string | null> => {
-      if (!user) return null;
+      // DEĞİŞİKLİK: if (!user) return null; kaldırıldı. Artık misafirler de başlayabilir.
 
       setIsLoading(true);
       try {
-        // Yeni oturum oluştur
-        const { data, error } = await supabase
-          .from("practice_sessions")
-          .insert({
-            user_id: user.id,
-            type: sessionFilters.type,
-            direction: sessionFilters.direction,
-            difficulty: sessionFilters.difficulty,
-            origin: sessionFilters.origin,
-            unit: sessionFilters.unit,
-            total_score: 0,
-            correct_answers: 0,
-            wrong_answers: 0,
-            highest_combo: 0,
-          })
-          .select()
-          .single();
+        let sessionId = `guest_${Date.now()}`;
 
-        if (error) throw error;
+        // Eğer kullanıcı giriş yapmışsa Supabase'e ekle
+        if (user) {
+          const { data, error } = await supabase
+            .from("practice_sessions")
+            .insert({
+              user_id: user.id,
+              type: sessionFilters.type,
+              direction: sessionFilters.direction,
+              difficulty: sessionFilters.difficulty,
+              origin: sessionFilters.origin,
+              unit: sessionFilters.unit,
+              total_score: 0,
+              correct_answers: 0,
+              wrong_answers: 0,
+              highest_combo: 0,
+            })
+            .select()
+            .single();
 
-        // Aktif oturumu ayarla
+          if (error) throw error;
+          sessionId = data.id;
+        }
+
+        // Aktif oturumu ayarla (Kullanıcı yoksa yerel (guest) ID ile)
         const newSession: ActivePracticeSession = {
-          id: data.id,
-          type: data.type,
-          direction: data.direction,
-          difficulty: data.difficulty,
-          origin: data.origin,
-          unit: data.unit,
+          id: sessionId,
+          type: sessionFilters.type as "multiple-choice" | "classic",
+          direction: sessionFilters.direction as "old-to-new" | "new-to-old",
+          difficulty: sessionFilters.difficulty,
+          origin: sessionFilters.origin,
+          unit: sessionFilters.unit,
           totalScore: 0,
           correctAnswers: 0,
           wrongAnswers: 0,
@@ -307,7 +312,7 @@ export const PracticeProvider = ({
         setWordPool(pool);
         setCurrentWordIndex(0);
 
-        return data.id;
+        return sessionId;
       } catch (error) {
         console.error("Alıştırma başlatılırken hata:", error);
         return null;
@@ -350,7 +355,8 @@ export const PracticeProvider = ({
   // Alıştırmayı bitir
   const endPractice = useCallback(
     async (saveStats: boolean = true) => {
-      if (!user || !activeSession) return;
+      // DEĞİŞİKLİK: if (!user) return; kaldırıldı. Artık misafir oturumları da düzgünce kapatılıyor.
+      if (!activeSession) return;
 
       // Oturum zaten bitiyorsa tekrar başlatma
       if (isEndingPractice.current) return;
@@ -359,7 +365,8 @@ export const PracticeProvider = ({
       setIsLoading(true);
 
       try {
-        if (saveStats) {
+        // YALNIZCA GİRİŞ YAPMIŞ KULLANICILAR VE MİSAFİR OLMAYAN OTURUMLAR İÇİN DATABASE'E KAYDET
+        if (saveStats && user && !activeSession.id.startsWith("guest_")) {
           // Oturumu güncelle
           const { error: sessionError } = await supabase
             .from("practice_sessions")
@@ -441,7 +448,7 @@ export const PracticeProvider = ({
           await fetchStatistics();
         }
 
-        // Aktif oturumu temizle
+        // Aktif oturumu her halükarda temizle (giriş yapmış olsun veya olmasın)
         setActiveSession(null);
         setWordPool([]);
         setCurrentWordIndex(0);
@@ -511,6 +518,7 @@ export const PracticeProvider = ({
   // Yanlış kelime ekle
   const addMistake = useCallback(
     async (wordId: number, wordText: string) => {
+      // DEĞİŞİKLİK: Kullanıcı yoksa işlem yapmadan çık, hata verme. Misafirler yanlış yapabilir ancak veri kaydedilmez.
       if (!user) return;
 
       try {

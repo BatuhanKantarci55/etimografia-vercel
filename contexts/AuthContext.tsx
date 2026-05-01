@@ -184,11 +184,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Bulunduğumuz klasör "(auth)" grubu mu?
     const inAuthGroup = segments[0] === "(auth)";
 
-    if (!user && !inAuthGroup) {
-      // Kullanıcı çıkış yapmış/yoksa ama uygulamada geziniyorsa girişe geri at
-      router.replace("/(auth)");
-    } else if (user && inAuthGroup) {
-      // Kullanıcı varsa ama giriş ekranındaysa ana ekrana geri at
+    // KULLANICI YOKSA ARTIK OTOMATİK OLARAK AUTH SAYFASINA ATMIYORUZ!
+    // Misafir kullanıcıların uygulama içerisinde gezinebilmesi için bu blok düzenlendi.
+
+    // Yalnızca kullanıcı GİRİŞ YAPMIŞSA ve Auth ekranındaysa onu uygulamaya (tabs'a) gönder.
+    if (user && inAuthGroup) {
       if (user.email_confirmed_at) {
         router.replace("/(tabs)");
       } else {

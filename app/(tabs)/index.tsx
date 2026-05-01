@@ -1,7 +1,9 @@
 import ArenaListModal from "@components/Arena/ArenaListModal";
+import AuthRequiredModal from "@components/AuthRequiredModal";
 import BackgroundImage from "@components/BackgroundImage";
 import BottomSheetModal from "@components/BottomSheetModal";
 import CustomText from "@components/CustomText";
+import DataNotSavedWarningModal from "@components/DataNotSavedWarningModal";
 import HomeInfoBoxes from "@components/Home/HomeInfoBoxes";
 import HomeProgress from "@components/Home/HomeProgress";
 import HomeTopBar from "@components/Home/HomeTopBar";
@@ -47,6 +49,11 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [arenaModalVisible, setArenaModalVisible] = useState(false);
+
+  // Misafir kullanıcı için uyarı modalları
+  const [authRequiredModalVisible, setAuthRequiredModalVisible] =
+    useState(false);
+  const [dataWarningModalVisible, setDataWarningModalVisible] = useState(false);
 
   // Temaya göre görsel seçimi
   const getPracticeBackground = () => {
@@ -132,10 +139,10 @@ export default function HomeScreen() {
     try {
       await Promise.all([
         new Promise((resolve) => setTimeout(resolve, 2000)),
-        loadProgress(),
-        fetchUserStats(),
-        refreshLevel(),
-        refreshArenaData(),
+        user ? loadProgress() : Promise.resolve(),
+        user ? fetchUserStats() : Promise.resolve(),
+        user ? refreshLevel() : Promise.resolve(),
+        user ? refreshArenaData() : Promise.resolve(),
       ]);
       if (Platform.OS !== "web") {
         Alert.alert("✅ Sayfa Yenilendi", "Ana sayfa bilgileri güncellendi.", [
@@ -157,6 +164,11 @@ export default function HomeScreen() {
   const handleStartPress = () => {
     switch (gameMode) {
       case "education":
+        if (!user) {
+          setAuthRequiredModalVisible(true);
+          return;
+        }
+
         if (progress) {
           const step = progress.current_step;
           if (step === 1) {
@@ -193,13 +205,25 @@ export default function HomeScreen() {
         break;
 
       case "practice":
+        if (!user) {
+          setDataWarningModalVisible(true);
+          return;
+        }
         router.push("/practice/filter");
         break;
 
       case "duel":
+        if (!user) {
+          setAuthRequiredModalVisible(true);
+          return;
+        }
         router.push("/duel/filter");
         break;
     }
+  };
+
+  const handlePracticeContinueWithoutLogin = () => {
+    router.push("/practice/filter");
   };
 
   const handleUnitChange = (newUnit: number) => {
@@ -214,21 +238,22 @@ export default function HomeScreen() {
     switch (gameMode) {
       case "education":
         return {
-          content: progress ? (
-            <HomeProgress
-              unitNumber={progress.current_unit}
-              stageNumber={progress.current_stage}
-              step={progress.current_step}
-              onUnitChange={handleUnitChange}
-            />
-          ) : (
-            <HomeProgress
-              unitNumber={1}
-              stageNumber={1}
-              step={1}
-              onUnitChange={handleUnitChange}
-            />
-          ),
+          content:
+            progress && user ? (
+              <HomeProgress
+                unitNumber={progress.current_unit}
+                stageNumber={progress.current_stage}
+                step={progress.current_step}
+                onUnitChange={handleUnitChange}
+              />
+            ) : (
+              <HomeProgress
+                unitNumber={1}
+                stageNumber={1}
+                step={1}
+                onUnitChange={handleUnitChange}
+              />
+            ),
         };
 
       case "practice":
@@ -279,7 +304,10 @@ export default function HomeScreen() {
                       },
                     ]}
                   >
-                    {statistics?.total_practice_score?.toLocaleString() || "0"}
+                    {user
+                      ? statistics?.total_practice_score?.toLocaleString() ||
+                        "0"
+                      : "0"}
                   </CustomText>
                 </View>
                 <View style={styles.practiceTextContainer}>
@@ -373,7 +401,10 @@ export default function HomeScreen() {
                         },
                       ]}
                     >
-                      {userProgress?.current_trophies?.toLocaleString() || "0"}
+                      {user
+                        ? userProgress?.current_trophies?.toLocaleString() ||
+                          "0"
+                        : "0"}
                     </CustomText>
                   </View>
                   <View style={styles.practiceTextContainer}>
@@ -475,7 +506,6 @@ export default function HomeScreen() {
           {modeContent.content}
         </View>
 
-        {/* DEĞİŞİKLİK: paddingHorizontal ile butonların genişlikleri daraltıldı */}
         <View
           style={[
             styles.buttonsContainer,
@@ -483,7 +513,6 @@ export default function HomeScreen() {
             isDesktop && { paddingHorizontal: scale(56) },
           ]}
         >
-          {/* DEĞİŞİKLİK: gap arttırılarak kutular ile buton arasındaki mesafe açıldı */}
           <View style={[styles.buttonRow, isDesktop && { gap: scale(28) }]}>
             <TouchableOpacity
               style={[
@@ -657,6 +686,18 @@ export default function HomeScreen() {
           console.log("Seçilen arena:", arenaId);
           setArenaModalVisible(false);
         }}
+      />
+
+      {/* Uyarı Modalları */}
+      <AuthRequiredModal
+        visible={authRequiredModalVisible}
+        onClose={() => setAuthRequiredModalVisible(false)}
+      />
+
+      <DataNotSavedWarningModal
+        visible={dataWarningModalVisible}
+        onClose={() => setDataWarningModalVisible(false)}
+        onContinue={handlePracticeContinueWithoutLogin}
       />
     </>
   );

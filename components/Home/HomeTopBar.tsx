@@ -1,5 +1,5 @@
-// components/Home/HomeTopBar.tsx
 import CustomText from "@components/CustomText";
+import { useAuth } from "@contexts/AuthContext";
 import { useLevel } from "@contexts/LevelContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +15,7 @@ export interface HomeTopBarProps {
 
 export default function HomeTopBar({ gameMoney, gameGems }: HomeTopBarProps) {
   const { colors, themeMode } = useTheme();
+  const { user } = useAuth();
   const { levelInfo, loading } = useLevel();
   const { scale, isDesktop } = useResponsive();
   const insets = useSafeAreaInsets();
@@ -25,13 +26,22 @@ export default function HomeTopBar({ gameMoney, gameGems }: HomeTopBarProps) {
   const [displayNextLevelTotal, setDisplayNextLevelTotal] = useState(500);
 
   useEffect(() => {
+    // Giriş yapmamış misafir kullanıcılar için seviyeyi her zaman 1 ve ilerlemeyi 0 gösteriyoruz
+    if (!user) {
+      setDisplayLevel(1);
+      setDisplayProgress(0);
+      setDisplayTotalScore(0);
+      setDisplayNextLevelTotal(500);
+      return;
+    }
+
     if (levelInfo) {
       setDisplayLevel(levelInfo.level);
       setDisplayProgress(levelInfo.progress);
       setDisplayTotalScore(levelInfo.totalScore);
       setDisplayNextLevelTotal(levelInfo.nextLevelTotalScore);
     }
-  }, [levelInfo]);
+  }, [levelInfo, user]);
 
   // Para ve mücevher renkleri - temaya göre
   const moneyColor = themeMode === "dark" ? "#FFB347" : "#FF8C00";
@@ -70,7 +80,7 @@ export default function HomeTopBar({ gameMoney, gameGems }: HomeTopBarProps) {
           paddingTop: insets.top,
           backgroundColor: colors.card,
           borderBottomWidth: 0,
-          justifyContent: "center", // Masaüstünde dikey ortalamak için eklendi
+          justifyContent: "center",
         },
         isDesktop && {
           borderBottomLeftRadius: scale(16),

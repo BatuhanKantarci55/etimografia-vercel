@@ -32,7 +32,6 @@ export default function ProfileContent({
 }: ProfileContentProps) {
   const { user } = useAuth();
   const { colors } = useTheme();
-  // DEĞİŞİKLİK: isDesktop eklendi
   const { scale, isDesktop } = useResponsive();
   const {
     userPosts,
@@ -102,7 +101,7 @@ export default function ProfileContent({
     }
 
     // Realtime dinleyici - sadece kendi profilimiz için
-    if (targetUserId === user?.id) {
+    if (targetUserId && targetUserId === user?.id) {
       const subscription = supabase
         .channel("profile-content-changes")
         .on(
@@ -215,7 +214,6 @@ export default function ProfileContent({
               borderTopLeftRadius: scale(12),
               borderTopRightRadius: scale(12),
             },
-            // DÜZELTME: Masaüstünde paylaşılan gönderi header'ı da PostItem'a uyumlu olarak %70 genişlikte ve ortalanmış yapılır
             isDesktop && { width: "70%", alignSelf: "center" },
           ]}
         >
@@ -294,11 +292,13 @@ export default function ProfileContent({
               },
             ]}
           >
-            {targetUserId === user?.id
-              ? "Henüz gönderiniz yok."
-              : "Bu kullanıcının henüz gönderisi yok."}
+            {!user
+              ? "Gönderileri görmek için giriş yapın."
+              : targetUserId === user?.id
+                ? "Henüz gönderiniz yok."
+                : "Bu kullanıcının henüz gönderisi yok."}
           </CustomText>
-          {targetUserId === user?.id && (
+          {user && targetUserId === user?.id && (
             <CustomText
               style={{
                 fontSize: scale(14),
@@ -503,9 +503,11 @@ export default function ProfileContent({
                   },
                 ]}
               >
-                {followType === "followers"
-                  ? "Henüz takipçiniz yok."
-                  : "Henüz kimseyi takip etmiyorsunuz."}
+                {!user
+                  ? "Takip listenizi görmek için giriş yapın."
+                  : followType === "followers"
+                    ? "Henüz takipçiniz yok."
+                    : "Henüz kimseyi takip etmiyorsunuz."}
               </CustomText>
             </View>
           }
@@ -596,69 +598,97 @@ export default function ProfileContent({
               },
             ]}
           >
-            Henüz rozetiniz yok.
+            {!user
+              ? "Rozetleri görmek için giriş yapın."
+              : "Henüz rozetiniz yok."}
           </CustomText>
         </View>
       }
     />
   );
 
-  const renderRankings = () => (
-    <FlatList
-      data={[
-        { mode: "Eğitim Modu", rank: 42, points: 1500 },
-        { mode: "Alıştırma Modu", rank: 52, points: 1400 },
-        { mode: "Müsabaka Modu", rank: 62, points: 1300 },
-      ]}
-      keyExtractor={(item, index) => `ranking-${index}`}
-      renderItem={({ item }) => (
-        <View
-          style={[
-            styles.rankingCard,
-            {
-              backgroundColor: colors.card,
-              padding: scale(16),
-              borderRadius: scale(12),
-              marginBottom: scale(12),
-            },
-          ]}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <CustomText style={{ fontSize: scale(16), color: colors.text }}>
-              {item.mode}
-            </CustomText>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="trophy" size={scale(20)} color="#FFD700" />
-              <CustomText
-                style={{
-                  fontSize: scale(20),
-                  color: colors.text,
-                  marginLeft: scale(8),
-                }}
-              >
-                {item.rank}
-              </CustomText>
-            </View>
-          </View>
+  const renderRankings = () => {
+    if (!user) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons
+            name="trophy-outline"
+            size={scale(64)}
+            color={colors.text + "40"}
+          />
           <CustomText
-            style={{
-              fontSize: scale(14),
-              color: colors.text + "80",
-              marginTop: scale(8),
-            }}
+            style={[
+              styles.emptyText,
+              {
+                fontSize: scale(16),
+                color: colors.text + "60",
+                marginTop: scale(16),
+                textAlign: "center",
+              },
+            ]}
           >
-            Puan: {item.points}
+            Sıralamaları görmek için giriş yapın.
           </CustomText>
         </View>
-      )}
-    />
-  );
+      );
+    }
+    return (
+      <FlatList
+        data={[
+          { mode: "Eğitim Modu", rank: 42, points: 1500 },
+          { mode: "Alıştırma Modu", rank: 52, points: 1400 },
+          { mode: "Müsabaka Modu", rank: 62, points: 1300 },
+        ]}
+        keyExtractor={(item, index) => `ranking-${index}`}
+        renderItem={({ item }) => (
+          <View
+            style={[
+              styles.rankingCard,
+              {
+                backgroundColor: colors.card,
+                padding: scale(16),
+                borderRadius: scale(12),
+                marginBottom: scale(12),
+              },
+            ]}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <CustomText style={{ fontSize: scale(16), color: colors.text }}>
+                {item.mode}
+              </CustomText>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="trophy" size={scale(20)} color="#FFD700" />
+                <CustomText
+                  style={{
+                    fontSize: scale(20),
+                    color: colors.text,
+                    marginLeft: scale(8),
+                  }}
+                >
+                  {item.rank}
+                </CustomText>
+              </View>
+            </View>
+            <CustomText
+              style={{
+                fontSize: scale(14),
+                color: colors.text + "80",
+                marginTop: scale(8),
+              }}
+            >
+              Puan: {item.points}
+            </CustomText>
+          </View>
+        )}
+      />
+    );
+  };
 
   const content = (() => {
     switch (tabKey) {
@@ -679,8 +709,6 @@ export default function ProfileContent({
     <View
       style={[
         { flex: 1 },
-        // DÜZELTME: Parent ScrollView tarafından bozulmaması için center yerine flex-start yapıldı
-        // Böylece 610px'lik maxWidth, görünür 650px kolon alanının tam olarak soluna yapışır ve içerikler ortaya gelir.
         isDesktop && { width: "100%", maxWidth: 610, alignSelf: "flex-start" },
       ]}
     >

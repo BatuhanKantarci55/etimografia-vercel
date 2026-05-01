@@ -1,3 +1,4 @@
+import AuthRequiredModal from "@components/AuthRequiredModal";
 import CustomText from "@components/CustomText";
 import PostItem from "@components/Feed/PostItem";
 import FollowSelector from "@components/Profile/FollowSelector";
@@ -11,13 +12,13 @@ import { supabase } from "@lib/supabase";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Image,
-    RefreshControl,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // Avatar görsellerini import et
@@ -71,7 +72,7 @@ export default function UserProfileContent({
 }: UserProfileContentProps) {
   const { user } = useAuth();
   const { colors } = useTheme();
-  const { scale } = useResponsive();
+  const { scale, isDesktop } = useResponsive();
   const { followUser, unfollowUser } = useFollow();
   const { likePost, unlikePost, sharePost, unsharePost, savePost, unsavePost } =
     usePosts();
@@ -85,6 +86,9 @@ export default function UserProfileContent({
     "followers",
   );
   const [selectorVisible, setSelectorVisible] = useState(false);
+
+  // Misafir kullanıcı için uyarı penceresi durumu
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -280,9 +284,59 @@ export default function UserProfileContent({
     setRefreshing(false);
   };
 
+  const handleLike = async (postId: string, isLiked: boolean) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
+    if (isLiked) {
+      await unlikePost(postId);
+    } else {
+      await likePost(postId);
+    }
+  };
+
+  const handleShare = async (postId: string, isShared: boolean) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
+    if (isShared) {
+      await unsharePost(postId);
+    } else {
+      await sharePost(postId);
+    }
+  };
+
+  const handleSave = async (postId: string, isSaved: boolean) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
+    if (isSaved) {
+      await unsavePost(postId);
+    } else {
+      await savePost(postId);
+    }
+  };
+
+  const handleComment = (postId: string) => {
+    if (!user) {
+      setAuthModalVisible(true);
+      return;
+    }
+    Alert.alert("Yorum", "Yorum yapma özelliği yakında eklenecek!");
+  };
+
+  const handleMorePress = (postId: string) => {};
+
+  const handleUserPress = (targetUserId: string) => {
+    router.push(`/user/${targetUserId}`);
+  };
+
   const handleFollow = async (targetUserId: string, isFollowing: boolean) => {
     if (!user) {
-      Alert.alert("Giriş Yapın", "Bu işlemi yapmak için giriş yapmalısınız.");
+      setAuthModalVisible(true);
       return;
     }
 
@@ -299,10 +353,6 @@ export default function UserProfileContent({
     }
   };
 
-  const handleUserPress = (targetUserId: string) => {
-    router.push(`/user/${targetUserId}`);
-  };
-
   const getAvatarSource = (avatarIndex: number) => {
     return allAvatars[avatarIndex % allAvatars.length];
   };
@@ -315,11 +365,11 @@ export default function UserProfileContent({
         <View style={{ marginBottom: scale(12) }}>
           <PostItem
             post={item}
-            onLike={() => likePost(item.id)}
-            onShare={() => sharePost(item.id)}
-            onSave={() => savePost(item.id)}
-            onComment={() => {}}
-            onMorePress={() => {}}
+            onLike={() => handleLike(item.id, item.user_liked)}
+            onShare={() => handleShare(item.id, item.user_shared)}
+            onSave={() => handleSave(item.id, item.user_saved)}
+            onComment={() => handleComment(item.id)}
+            onMorePress={() => handleMorePress(item.id)}
             onUserPress={handleUserPress}
           />
         </View>
@@ -699,18 +749,36 @@ export default function UserProfileContent({
     </View>
   );
 
-  switch (tabKey) {
-    case "gönderi":
-      return renderPosts();
-    case "takipçi":
-      return renderTakipciList();
-    case "rozet":
-      return renderBadges();
-    case "sıralama":
-      return renderRankings();
-    default:
-      return null;
-  }
+  const content = (() => {
+    switch (tabKey) {
+      case "gönderi":
+        return renderPosts();
+      case "takipçi":
+        return renderTakipciList();
+      case "rozet":
+        return renderBadges();
+      case "sıralama":
+        return renderRankings();
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <View
+      style={[
+        { flex: 1 },
+        isDesktop && { width: "100%", maxWidth: 610, alignSelf: "flex-start" },
+      ]}
+    >
+      {content}
+
+      <AuthRequiredModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -1,5 +1,6 @@
 import BottomSheetModal from "@components/BottomSheetModal";
 import CustomText from "@components/CustomText";
+import { useAuth } from "@contexts/AuthContext";
 import { useEducation } from "@contexts/EducationContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,7 +17,6 @@ import {
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CONTENT_WIDTH = SCREEN_WIDTH - 40;
 
 // JSON dosyalarını import et
 import stagesData from "@assets/data/stages.json";
@@ -41,7 +41,7 @@ export default function UnitListModal({
   onSelectUnit,
 }: UnitListModalProps) {
   const { colors, themeMode } = useTheme();
-  // DEĞİŞİKLİK: isDesktop içeri alındı
+  const { user } = useAuth();
   const { scale, isDesktop } = useResponsive();
   const { completedStages } = useEducation();
 
@@ -97,6 +97,8 @@ export default function UnitListModal({
 
   // Bir ünitenin tamamlanıp tamamlanmadığını kontrol et
   const isUnitCompleted = (unitNumber: number) => {
+    if (!user) return false;
+
     const stagesInUnit = stagesData.filter(
       (stage: any) => stage.unit_number === unitNumber,
     ).length;
@@ -110,6 +112,8 @@ export default function UnitListModal({
 
   // Bir üniteye geçilip geçilmediğini kontrol et
   const isUnitUnlocked = (unitNumber: number) => {
+    if (!user) return unitNumber === 1; // Giriş yapılmamışsa sadece Ünite 1 açık gözüksün.
+
     if (unitNumber === 1) return true;
     return isUnitCompleted(unitNumber - 1);
   };
@@ -170,7 +174,7 @@ export default function UnitListModal({
 
   // Ünite durumuna göre mesaj
   const getUnitStatus = (unitNumber: number) => {
-    if (unitNumber === currentUnit) {
+    if (unitNumber === currentUnit && user) {
       return {
         message: "Mevcut Ünite",
         color: colors.primary,
@@ -182,7 +186,7 @@ export default function UnitListModal({
       };
     } else if (isUnitUnlocked(unitNumber)) {
       return {
-        message: "Başlanabilir",
+        message: user ? "Başlanabilir" : "Giriş Gerekli",
         color: colors.primary,
       };
     } else {
@@ -203,7 +207,7 @@ export default function UnitListModal({
       visible={visible}
       onClose={onClose}
       title="Üniteler"
-      height={isDesktop ? "auto" : "70%"} // DEĞİŞİKLİK: Masaüstünde auto yükseklik
+      height={isDesktop ? "auto" : "70%"}
       showCloseButton={true}
       showDragHandle={true}
       closeOnBackdropPress={true}
@@ -220,7 +224,6 @@ export default function UnitListModal({
               {
                 backgroundColor: "rgba(0,0,0,0.5)",
                 opacity: selectedIndex > 0 ? 1 : 0.3,
-                // DEĞİŞİKLİK: Masaüstünde ok boyutlarını küçült
                 width: scale(isDesktop ? 34 : 44),
                 height: scale(isDesktop ? 34 : 44),
                 borderRadius: scale(isDesktop ? 17 : 22),
@@ -266,7 +269,6 @@ export default function UnitListModal({
               {
                 backgroundColor: "rgba(0,0,0,0.5)",
                 opacity: selectedIndex < units.length - 1 ? 1 : 0.3,
-                // DEĞİŞİKLİK: Masaüstünde ok boyutlarını küçült
                 width: scale(isDesktop ? 34 : 44),
                 height: scale(isDesktop ? 34 : 44),
                 borderRadius: scale(isDesktop ? 17 : 22),
@@ -311,7 +313,7 @@ export default function UnitListModal({
               styles.unitTitle,
               {
                 color: colors.text,
-                fontSize: scale(isDesktop ? 15 : 18), // DEĞİŞİKLİK: Masaüstü font boyutu
+                fontSize: scale(isDesktop ? 15 : 18),
               },
             ]}
           >
@@ -333,7 +335,7 @@ export default function UnitListModal({
                 styles.statusText,
                 {
                   color: status.color,
-                  fontSize: scale(isDesktop ? 12 : 14), // DEĞİŞİKLİK: Masaüstü font boyutu
+                  fontSize: scale(isDesktop ? 12 : 14),
                 },
               ]}
             >
