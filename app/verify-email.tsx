@@ -1,193 +1,125 @@
+import BackgroundImage from "@components/BackgroundImage";
 import CustomText from "@components/CustomText";
 import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
-import { supabase } from "@lib/supabase";
 import { router } from "expo-router";
-import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 export default function VerifyEmailScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { colors } = useTheme();
-  const { scale, wp } = useResponsive();
-
-  const handleResendEmail = async () => {
-    if (!user?.email) return;
-
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: user.email,
-      });
-
-      if (error) throw error;
-      Alert.alert("Başarılı", "Doğrulama e-postası tekrar gönderildi.");
-    } catch (error: any) {
-      Alert.alert("Hata", error.message);
-    }
-  };
-
-  const handleCheckVerification = async () => {
-    try {
-      // Kullanıcıyı yenile
-      const {
-        data: { user: refreshedUser },
-        error,
-      } = await supabase.auth.refreshSession();
-
-      if (error) throw error;
-
-      if (refreshedUser?.email_confirmed_at) {
-        Alert.alert(
-          "Başarılı",
-          "E-postanız doğrulandı! Ana sayfaya yönlendiriliyorsunuz.",
-        );
-        router.replace("/(tabs)");
-      } else {
-        Alert.alert(
-          "Bilgi",
-          "Henüz doğrulamadınız. Lütfen e-postanızı kontrol edin.",
-        );
-      }
-    } catch (error: any) {
-      Alert.alert("Hata", error.message);
-    }
-  };
+  const { scale, wp, isDesktop } = useResponsive();
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background, padding: scale(20) },
-      ]}
-    >
-      <View
-        style={[
-          styles.content,
-          { maxWidth: 500, alignSelf: "center", width: wp(90) },
-        ]}
-      >
-        <View style={[styles.iconContainer, { marginBottom: scale(30) }]}>
-          <Ionicons
-            name="mail-outline"
-            size={scale(80)}
-            color={colors.primary}
-          />
-        </View>
-
-        <CustomText
-          style={[
-            {
-              fontSize: scale(28),
-              color: colors.primary,
-              marginBottom: scale(20),
-              textAlign: "center",
-            },
-          ]}
-        >
-          📧 E-posta Doğrulama
-        </CustomText>
-
+    <BackgroundImage overlayOpacity={0.03}>
+      <View style={[styles.container, { padding: scale(isDesktop ? 10 : 20) }]}>
         <View
           style={[
-            styles.card,
+            styles.content,
             {
-              backgroundColor: colors.card + "DD",
-              padding: scale(20),
-              borderRadius: scale(15),
-              marginBottom: scale(30),
+              maxWidth: isDesktop ? 400 : 500,
+              alignSelf: "center",
+              width: wp(90),
             },
           ]}
         >
+          <View
+            style={[
+              styles.iconContainer,
+              { marginBottom: scale(isDesktop ? 15 : 30) },
+            ]}
+          >
+            <Ionicons
+              name="mail-outline"
+              size={scale(isDesktop ? 50 : 80)}
+              color={colors.primary}
+            />
+          </View>
+
           <CustomText
             style={[
-              styles.message,
               {
-                fontSize: scale(16),
-                color: colors.text,
-                marginBottom: scale(15),
-                lineHeight: scale(24),
+                fontSize: scale(isDesktop ? 20 : 28),
+                color: colors.primary,
+                marginBottom: scale(isDesktop ? 10 : 20),
+                textAlign: "center",
+                fontWeight: "bold",
               },
             ]}
           >
-            <CustomText style={{ color: colors.primary }}>
-              {user?.email}
-            </CustomText>{" "}
-            adresine doğrulama bağlantısı gönderdik.
+            📧 E-posta Doğrulama
           </CustomText>
-          <CustomText
-            style={[
-              styles.instruction,
-              {
-                fontSize: scale(14),
-                color: colors.text,
-                lineHeight: scale(22),
-              },
-            ]}
-          >
-            Lütfen e-postanızı kontrol edin ve doğrulama bağlantısına tıklayın.
-          </CustomText>
-        </View>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
+          <View
             style={[
-              styles.primaryButton,
+              styles.card,
               {
-                backgroundColor: colors.primary,
-                padding: scale(16),
-                borderRadius: scale(10),
-                marginBottom: scale(12),
+                backgroundColor: colors.card + "EE",
+                padding: scale(isDesktop ? 16 : 20),
+                borderRadius: scale(isDesktop ? 10 : 15),
+                marginBottom: scale(isDesktop ? 15 : 30),
               },
             ]}
-            onPress={handleResendEmail}
-          >
-            <CustomText
-              style={[styles.primaryButtonText, { fontSize: scale(18) }]}
-            >
-              E-postayı Tekrar Gönder
-            </CustomText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              {
-                backgroundColor: colors.card,
-                padding: scale(16),
-                borderRadius: scale(10),
-                marginBottom: scale(12),
-              },
-            ]}
-            onPress={handleCheckVerification}
           >
             <CustomText
               style={[
-                styles.secondaryButtonText,
-                { fontSize: scale(18), color: colors.primary },
+                styles.message,
+                {
+                  fontSize: scale(isDesktop ? 13 : 16),
+                  color: colors.text,
+                  marginBottom: scale(isDesktop ? 8 : 15),
+                  lineHeight: scale(isDesktop ? 20 : 24),
+                },
               ]}
             >
-              Doğruladım, Devam Et
+              <CustomText style={{ color: colors.primary, fontWeight: "600" }}>
+                {user?.email}
+              </CustomText>{" "}
+              adresine doğrulama bağlantısı gönderdik.
             </CustomText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.linkButton, { padding: scale(16) }]}
-            onPress={() => signOut()}
-          >
             <CustomText
               style={[
-                styles.linkButtonText,
-                { fontSize: scale(16), color: colors.text },
+                styles.instruction,
+                {
+                  fontSize: scale(isDesktop ? 11 : 14),
+                  color: colors.text,
+                  lineHeight: scale(isDesktop ? 16 : 22),
+                },
               ]}
             >
-              Farklı Hesap Kullan
+              Lütfen e-postanızı kontrol edin ve doğrulama bağlantısına
+              tıklayın.
             </CustomText>
-          </TouchableOpacity>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                {
+                  backgroundColor: colors.primary,
+                  padding: scale(isDesktop ? 10 : 16),
+                  borderRadius: scale(isDesktop ? 8 : 10),
+                  marginBottom: scale(isDesktop ? 8 : 12),
+                },
+              ]}
+              onPress={() => router.replace("/(tabs)")}
+            >
+              <CustomText
+                style={[
+                  styles.primaryButtonText,
+                  { fontSize: scale(isDesktop ? 14 : 18) },
+                ]}
+              >
+                Ana Sayfaya Dön
+              </CustomText>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
+    </BackgroundImage>
   );
 }
 
@@ -225,14 +157,4 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
   },
-  secondaryButton: {
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    fontWeight: "600",
-  },
-  linkButton: {
-    alignItems: "center",
-  },
-  linkButtonText: {},
 });

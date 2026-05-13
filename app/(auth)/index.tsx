@@ -1,5 +1,8 @@
 import BackgroundImage from "@components/BackgroundImage";
 import CustomText from "@components/CustomText";
+import KVKKModal from "@components/Login/kvkk";
+import PrivacyModal from "@components/Login/privacy";
+import TermsModal from "@components/Login/terms";
 import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,7 +23,6 @@ import {
   ViewStyle,
 } from "react-native";
 
-// Floating Label Input Bileşeni
 interface FloatingLabelInputProps extends Omit<TextInputProps, "keyboardType"> {
   label: string;
   value: string;
@@ -30,8 +32,8 @@ interface FloatingLabelInputProps extends Omit<TextInputProps, "keyboardType"> {
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   containerStyle?: any;
   inputStyle?: any;
-  themeColors?: any; // renkler için
-  inputRef?: React.Ref<TextInput>; // Referans yönetimi için eklendi
+  themeColors?: any;
+  inputRef?: React.Ref<TextInput>;
 }
 
 const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
@@ -93,7 +95,10 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 
   return (
     <View style={[{ marginBottom: 16, position: "relative" }, containerStyle]}>
-      <Animated.Text style={labelStyle}>{label}</Animated.Text>
+      {/* pointerEvents="none" eklenerek tıklamaların TextInput'a geçmesi sağlandı */}
+      <Animated.Text pointerEvents="none" style={labelStyle}>
+        {label}
+      </Animated.Text>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <TextInput
           ref={inputRef}
@@ -109,6 +114,7 @@ const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
               textAlignVertical: "center",
             },
             inputStyle,
+            Platform.OS === "web" && ({ outlineStyle: "none" } as any),
           ]}
           value={value}
           onChangeText={onChangeText}
@@ -144,15 +150,21 @@ export default function AuthScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loginError, setLoginError] = useState(false); // Yanlış giriş uyarısı için state
+  const [loginError, setLoginError] = useState(false);
 
-  // Enter tuşu ile alanlar arası geçişler için referanslar
+  const [acceptedAgreements, setAcceptedAgreements] = useState(false);
+  const [modals, setModals] = useState({
+    terms: false,
+    privacy: false,
+    kvkk: false,
+  });
+
   const passwordRef = useRef<TextInput>(null);
   const usernameRef = useRef<TextInput>(null);
   const registerPasswordRef = useRef<TextInput>(null);
 
   const { signUp, signIn, resetPassword } = useAuth();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { scale, wp, isLandscape, isTablet, isDesktop, fontSize, spacing } =
     useResponsive();
 
@@ -175,21 +187,13 @@ export default function AuthScreen() {
         paddingHorizontal: spacing(20),
       };
     }
-    return {
-      flexGrow: 1,
-      justifyContent: "center",
-      padding: spacing(20),
-    };
+    return { flexGrow: 1, justifyContent: "center", padding: spacing(20) };
   };
 
   const getFormWidth = () => {
-    if (isDesktop) return 370;
-    if (isTablet) {
-      if (isLandscape) return wp(35);
-      return wp(50);
-    }
-    if (isLandscape) return wp(45);
-    return wp(90);
+    if (isDesktop) return 400;
+    if (isTablet) return isLandscape ? wp(35) : wp(50);
+    return isLandscape ? wp(45) : wp(90);
   };
 
   const getFormPadding = () => {
@@ -277,7 +281,7 @@ export default function AuthScreen() {
   };
 
   const handleSubmit = async () => {
-    setLoginError(false); // Yeni denemede hatayı sıfırla
+    setLoginError(false);
 
     if (mode === "login") {
       if (!email || !password) {
@@ -289,7 +293,7 @@ export default function AuthScreen() {
       setLoading(false);
 
       if (error) {
-        setLoginError(true); // Popup alert yerine inline mesajı göster
+        setLoginError(true);
       }
     } else if (mode === "register") {
       if (!email || !username || !password) {
@@ -300,6 +304,14 @@ export default function AuthScreen() {
         Alert.alert("Hata", "Şifre en az 6 karakter olmalıdır");
         return;
       }
+      if (!acceptedAgreements) {
+        Alert.alert(
+          "Hata",
+          "Kayıt olabilmek için kullanıcı sözleşmesi ve gizlilik politikasını onaylamanız gerekmektedir.",
+        );
+        return;
+      }
+
       setLoading(true);
       const { error } = await signUp(email, password, username);
       setLoading(false);
@@ -324,7 +336,6 @@ export default function AuthScreen() {
     }
   };
 
-  // Mod değiştirirken mevcut hataları sıfırlamak için yardımcı
   const changeMode = (newMode: AuthMode) => {
     setMode(newMode);
     setLoginError(false);
@@ -352,12 +363,12 @@ export default function AuthScreen() {
             value={email}
             onChangeText={(t) => {
               setEmail(t);
-              if (loginError) setLoginError(false); // Yazarken hatayı gizle
+              if (loginError) setLoginError(false);
             }}
             keyboardType="email-address"
             autoCapitalize="none"
             returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()} // Enter'a basınca şifreye geç
+            onSubmitEditing={() => passwordRef.current?.focus()}
             blurOnSubmit={false}
             containerStyle={{ marginBottom: getInputMarginBottom() }}
             inputStyle={{
@@ -376,11 +387,11 @@ export default function AuthScreen() {
             value={password}
             onChangeText={(t) => {
               setPassword(t);
-              if (loginError) setLoginError(false); // Yazarken hatayı gizle
+              if (loginError) setLoginError(false);
             }}
             secureTextEntry
             returnKeyType="go"
-            onSubmitEditing={handleSubmit} // Enter'a basınca giriş yap
+            onSubmitEditing={handleSubmit}
             containerStyle={{ marginBottom: getInputMarginBottom() }}
             inputStyle={{
               backgroundColor: colors.card,
@@ -506,7 +517,6 @@ export default function AuthScreen() {
             onChangeText={setPassword}
             secureTextEntry
             returnKeyType="go"
-            onSubmitEditing={handleSubmit}
             containerStyle={{ marginBottom: getInputMarginBottom() }}
             inputStyle={{
               backgroundColor: colors.card,
@@ -518,6 +528,60 @@ export default function AuthScreen() {
             }}
             themeColors={colors}
           />
+
+          <View
+            style={[
+              styles.checkboxRow,
+              { marginBottom: getInputMarginBottom() },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => setAcceptedAgreements(!acceptedAgreements)}
+              style={styles.checkboxTouch}
+            >
+              <Ionicons
+                name={acceptedAgreements ? "checkbox" : "square-outline"}
+                size={scale(isDesktop ? 12 : 16)}
+                color={acceptedAgreements ? colors.primary : colors.text + "80"}
+              />
+            </TouchableOpacity>
+            <CustomText
+              style={{
+                color: colors.text,
+                fontSize: scale(isDesktop ? 9 : 11),
+                flex: 1,
+                lineHeight: scale(isDesktop ? 12 : 16),
+              }}
+            >
+              <CustomText
+                onPress={() => setModals({ ...modals, terms: true })}
+                style={[
+                  styles.checkboxLink,
+                  {
+                    color: colors.primary,
+                    fontSize: scale(isDesktop ? 9 : 11),
+                  },
+                ]}
+              >
+                Kullanıcı Sözleşmesini
+              </CustomText>
+              {" ve "}
+              <CustomText
+                onPress={() => setModals({ ...modals, privacy: true })}
+                style={[
+                  styles.checkboxLink,
+                  {
+                    color: colors.primary,
+                    fontSize: scale(isDesktop ? 9 : 11),
+                  },
+                ]}
+              >
+                Gizlilik Politikasını
+              </CustomText>
+              {" okudum ve kabul ediyorum."}
+            </CustomText>
+          </View>
+
           <TouchableOpacity
             style={[
               styles.button,
@@ -567,7 +631,6 @@ export default function AuthScreen() {
       );
     }
 
-    // forgot mode
     return (
       <>
         <CustomText
@@ -699,7 +762,7 @@ export default function AuthScreen() {
                 padding: getFormPadding(),
                 borderRadius: scale(getFormBorderRadius()),
                 width: getFormWidth(),
-                maxWidth: isDesktop ? 360 : isTablet ? 450 : 350,
+                maxWidth: isDesktop ? 400 : isTablet ? 450 : 350,
                 alignSelf: "center",
                 ...(isDesktop && {
                   shadowColor: "#000",
@@ -715,6 +778,19 @@ export default function AuthScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <TermsModal
+        visible={modals.terms}
+        onClose={() => setModals({ ...modals, terms: false })}
+      />
+      <PrivacyModal
+        visible={modals.privacy}
+        onClose={() => setModals({ ...modals, privacy: false })}
+      />
+      <KVKKModal
+        visible={modals.kvkk}
+        onClose={() => setModals({ ...modals, kvkk: false })}
+      />
     </BackgroundImage>
   );
 }
@@ -734,4 +810,15 @@ const styles = StyleSheet.create({
   link: { textAlign: "right" },
   switchText: { textAlign: "center" },
   description: { textAlign: "center" },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  checkboxTouch: {
+    padding: 2,
+    marginRight: 4,
+  },
+  checkboxLink: {
+    fontWeight: "600",
+  },
 });

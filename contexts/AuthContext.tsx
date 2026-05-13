@@ -1,6 +1,7 @@
 import { Session, User } from "@supabase/supabase-js";
 import { router, useSegments } from "expo-router";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { supabase } from "../lib/supabase";
 
 type Profile = {
@@ -26,6 +27,7 @@ type AuthContextType = {
   resetPassword: (email: string) => Promise<any>;
   updateProfile: (updates: Partial<Profile>) => Promise<any>;
   refreshProfile: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: any }>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -39,12 +41,30 @@ const AuthContext = createContext<AuthContextType>({
   resetPassword: async () => ({}),
   updateProfile: async () => ({}),
   refreshProfile: async () => {},
+  deleteAccount: async () => ({ error: null }),
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 // Yardımcı: email formatı mı?
 const isEmail = (str: string) => /\S+@\S+\.\S+/.test(str);
+
+// YENİ: Platforma göre dinamik redirect URL'i oluşturur
+const getRedirectUrl = () => {
+  if (Platform.OS === "web") {
+    // window.location.origin kodu uygulamanın çalıştığı adresi dinamik olarak alır.
+    // 1. Canlıda (Vercel) çalışırken: "https://etimografia.vercel.app" döner.
+    // 2. Local'de test ederken: "http://localhost:8081" döner.
+    // NOT: Localhost'un çalışması için Supabase Redirect URLs listesinde http://localhost:8081/* ekli olmalıdır.
+    const origin =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://etimografia.vercel.app";
+    return origin;
+  }
+  // Mobil uygulama için Supabase'de izin verilen deep link şemasını kullan
+  return "etimografia://auth/callback";
+};
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -76,23 +96,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .from("profiles")
         .select("id")
         .eq("id", user.id)
-        .single();
-
-      const profileData = {
-        id: user.id,
-        email: user.email,
-        username:
-          user.user_metadata?.username ||
-          user.email?.split("@")[0] ||
-          "kullanici",
-        full_name: null,
-        bio: null,
-        banner_index: 0,
-        avatar_index: 0,
-        updated_at: new Date(),
-      };
+        .maybeSingle();
 
       if (!existingProfile) {
+        const profileData = {
+          id: user.id,
+          email: user.email,
+          username:
+            user.user_metadata?.username ||
+            user.email?.split("@")[0] ||
+            "kullanici",
+          full_name: null,
+          bio: null,
+          banner_index: 0,
+          avatar_index: 0,
+          updated_at: new Date(),
+        };
+
         await supabase.from("profiles").insert({
           ...profileData,
           created_at: new Date(),
@@ -102,7 +122,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .from("profiles")
           .update({
             email: user.email,
-            username: user.user_metadata?.username || user.email?.split("@")[0],
             updated_at: new Date(),
           })
           .eq("id", user.id);
@@ -154,7 +173,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
 
-      // Bazı durumlarda getSession'dan önce bu tetiklenirse UI'yi hazırla
       if (event === "INITIAL_SESSION") {
         setInitialized(true);
       }
@@ -176,31 +194,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // Expo Router'ın Resmi Rota (Auth) Yönlendirme Mantığı
+  // GÜNCELLENDİ: Expo Router'ın Resmi Rota (Auth) Yönlendirme Mantığı
   useEffect(() => {
-    // Uygulama henüz yüklenmediyse bekle
     if (!initialized) return;
 
-    // Bulunduğumuz klasör "(auth)" grubu mu?
-    const inAuthGroup = segments[0] === "(auth)";
-
-    // KULLANICI YOKSA ARTIK OTOMATİK OLARAK AUTH SAYFASINA ATMIYORUZ!
-    // Misafir kullanıcıların uygulama içerisinde gezinebilmesi için bu blok düzenlendi.
-
-    // Yalnızca kullanıcı GİRİŞ YAPMIŞSA ve Auth ekranındaysa onu uygulamaya (tabs'a) gönder.
-    if (user && inAuthGroup) {
+    if (user) {
       if (user.email_confirmed_at) {
-        router.replace("/(tabs)");
+        // Eğer email onaylanmışsa ve kullanıcı log in, kayıt, doğrulama veya deep-link(auth) sekmesindeyse ana sayfaya at
+        if (
+          segments[0] === "(auth)" ||
+          segments[0] === "verify-email" ||
+          segments[0] === "auth" // <- Mailden gelen linkten yakalandığında ana sayfaya aktaracak satır
+        ) {
+          router.replace("/(tabs)");
+        }
       } else {
-        router.replace("/verify-email");
+        // Email onaylanmamışsa sadece verify-email sayfasında değilse o sayfaya yönlendir
+        if (segments[0] !== "verify-email") {
+          router.replace("/verify-email");
+        }
       }
     }
   }, [user, initialized, segments]);
 
-  // Kullanıcı adı veya email ile giriş
   const signIn = async (emailOrUsername: string, password: string) => {
     let email = emailOrUsername;
-    // Eğer email formatında değilse, username'e göre email ara
     if (!isEmail(emailOrUsername)) {
       const { data, error } = await supabase
         .from("profiles")
@@ -230,7 +248,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       password,
       options: {
         data: { username },
-        emailRedirectTo: "etimografia://auth/callback",
+        // GÜNCELLENDİ: Platforma dinamik olarak karar vererek URL oluşturulur
+        emailRedirectTo: getRedirectUrl(),
       },
     });
 
@@ -239,6 +258,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { data, error: { message: "Bu email zaten kayıtlı" } };
       }
       await createOrUpdateProfile(data.user);
+      setUser(data.user);
     }
     return { data, error };
   };
@@ -258,7 +278,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resetPassword = async (email: string) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "etimografia://auth/callback",
+      // GÜNCELLENDİ: Platforma dinamik olarak karar vererek URL oluşturulur
+      redirectTo: getRedirectUrl(),
     });
     return { data, error };
   };
@@ -266,6 +287,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user?.id) return { error: { message: "Kullanıcı bulunamadı" } };
     try {
+      if (updates.username) {
+        await supabase.auth.updateUser({
+          data: { username: updates.username },
+        });
+      }
+
       const { data, error } = await supabase
         .from("profiles")
         .update({ ...updates, updated_at: new Date() })
@@ -278,6 +305,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error("Profil güncellenirken hata:", error);
       return { data: null, error };
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!user?.id) return { error: { message: "Kullanıcı bulunamadı" } };
+    try {
+      const { error: rpcError } = await supabase.rpc("delete_user");
+
+      if (rpcError) {
+        console.error("RPC Error (Hesap silinemedi):", rpcError);
+        throw rpcError;
+      }
+
+      await signOut();
+      return { error: null };
+    } catch (error: any) {
+      console.error("Hesap silinirken genel hata:", error);
+      return { error };
     }
   };
 
@@ -294,6 +339,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         resetPassword,
         updateProfile,
         refreshProfile,
+        deleteAccount,
       }}
     >
       {children}

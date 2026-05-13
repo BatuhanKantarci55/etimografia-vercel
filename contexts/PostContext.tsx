@@ -41,6 +41,10 @@ export type Post = {
     username: string;
     avatar_index: number;
   } | null;
+  // EKLENDİ: Sıralama ve UI için tarih ile isim bilgileri
+  shared_at?: string;
+  shared_by_username?: string;
+  saved_at?: string;
 };
 
 type PollVotesMap = {
@@ -120,17 +124,16 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
   // Önbellek temizleme işlemi sadece bir kere yapılsın
   const cacheCleanedRef = useRef(false);
 
-  // Önbelleğe kaydet (hatayı yönet, kullanıcıyı bloke etme)
+  // Önbelleğe kaydet
   const saveToCache = async (key: string, data: any) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
-      // Disk dolu veya başka bir hata - sadece logla, uygulamayı durdurma
       console.warn(`Önbelleğe kaydedilemedi (${key}):`, error);
     }
   };
 
-  // Önbellekten yükle (hatayı yönet)
+  // Önbellekten yükle
   const loadFromCache = async (key: string) => {
     try {
       const cached = await AsyncStorage.getItem(key);
@@ -141,7 +144,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Eski ve gereksiz büyük önbellekleri temizle (base64 içerenleri)
+  // Eski ve gereksiz büyük önbellekleri temizle
   const clearOldCache = async () => {
     if (cacheCleanedRef.current) return;
     cacheCleanedRef.current = true;
@@ -183,12 +186,11 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user, posts]);
 
-  // Yeni gönderi bayrağını temizle
   const clearNewPostsFlag = useCallback(() => {
     setHasNewPosts(false);
   }, []);
 
-  // Alıntılanan gönderilerin detaylarını getir (anket verileri dahil)
+  // Alıntılanan gönderilerin detaylarını getir
   const fetchQuotedPosts = async (posts: any[]) => {
     const quotedPostIds = posts
       .filter((p) => p.quoted_post_id)
@@ -206,7 +208,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
       return posts;
     }
 
-    // Alıntılanan gönderiler için anket oylarını ve kullanıcı oylarını getir
     const quotedPostsWithVotes = await Promise.all(
       (quotedPosts || []).map(async (quotedPost: any) => {
         if (quotedPost.post_type === "poll") {
@@ -217,7 +218,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
             userVote = await fetchUserPollVote(quotedPost.id, user.id);
           }
 
-          // Poll data'yı güncelle
           const updatedPollData = {
             ...quotedPost.poll_data,
             options: quotedPost.poll_data.options.map((opt: any) => ({
@@ -248,7 +248,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }));
   };
 
-  // Anket oylarını getir
   const fetchPollVotes = async (postId: string): Promise<PollVotesMap> => {
     try {
       const { data, error } = await supabase
@@ -271,7 +270,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Kullanıcının anket oyunu getir
   const fetchUserPollVote = async (postId: string, userId: string) => {
     try {
       const { data, error } = await supabase
@@ -290,7 +288,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Gönderi verilerini anket oylarıyla güncelle
   const updatePostWithPollVotes = async (post: any) => {
     if (post.post_type === "poll") {
       const pollVotes = await fetchPollVotes(post.id);
@@ -322,7 +319,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
     setLoading(true);
     try {
-      // Önbellekten yüklemeyi dene (forceRefresh yoksa)
       if (!forceRefresh) {
         const cachedPosts = await loadFromCache(CACHE_KEYS.POSTS);
         if (cachedPosts && Array.isArray(cachedPosts)) {
@@ -331,17 +327,91 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Supabase'den güncel verileri al
-      const { data, error } = await supabase
+      // DÜZELTME: 1. Normal gönderileri getir
+      const { data: normalPosts, error } = await supabase
         .from("post_stats")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (error) throw error;
 
+      // DÜZELTME: 2. Diğer kullanıcıların paylaştığı (repost) gönderileri de getir
+      const { data: sharesData } = await supabase
+        .from("post_shares")
+        .select(
+          `
+          post_id,
+          user_id,
+          created_at,
+          post_stats!post_id (*)
+        `,
+        )
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Paylaşanların profillerini tek seferde getir
+      const sharerIds = [
+        ...new Set((sharesData || []).map((s: any) => s.user_id)),
+      ];
+      const profilesMap = new Map();
+      if (sharerIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, username")
+          .in("id", sharerIds);
+        profilesData?.forEach((p: any) => profilesMap.set(p.id, p.username));
+      }
+
+      // Paylaşımları Post tipine şekillendir
+      const formattedShares = (sharesData || [])
+        .map((share: any) => {
+          const post = share.post_stats;
+          if (!post) return null;
+          return {
+            ...post,
+            is_shared_post: true,
+            shared_at: share.created_at, // Orijinal tarih yerine paylaşılma tarihini atıyoruz
+            shared_by_username:
+              profilesMap.get(share.user_id) || "Bir kullanıcı",
+            original_post_id: post.id,
+          };
+        })
+        .filter(Boolean);
+
+      // Normal gönderiler ve paylaşımları birleştir
+      const combinedPosts = [...(normalPosts || []), ...formattedShares];
+
+      // DÜZELTME: Bir gönderi hem orijinal akışta hem de paylaşılanlar arasındaysa (Duplicate Key önleme)
+      // Yalnızca en güncel saatli (en son paylaşılan/oluşturulan) halini tut.
+      const uniquePostsMap = new Map();
+      combinedPosts.forEach((post) => {
+        if (!uniquePostsMap.has(post.id)) {
+          uniquePostsMap.set(post.id, post);
+        } else {
+          const existing = uniquePostsMap.get(post.id);
+          const existingTime = new Date(
+            existing.shared_at || existing.created_at,
+          ).getTime();
+          const currentTime = new Date(
+            post.shared_at || post.created_at,
+          ).getTime();
+          if (currentTime > existingTime) {
+            uniquePostsMap.set(post.id, post);
+          }
+        }
+      });
+
+      // shared_at (varsa) veya created_at zamanına göre yeniden sırala
+      const sortedUniquePosts = Array.from(uniquePostsMap.values()).sort(
+        (a, b) =>
+          new Date(b.shared_at || b.created_at).getTime() -
+          new Date(a.shared_at || a.created_at).getTime(),
+      );
+
       // Her gönderi için anket oylarını güncelle
       const postsWithPollVotes = await Promise.all(
-        (data || []).map(async (post: any) => {
+        sortedUniquePosts.map(async (post: any) => {
           return await updatePostWithPollVotes(post);
         }),
       );
@@ -392,12 +462,8 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Son gönderi ID'lerini güncelle
       lastPostIds.current = new Set(postsWithDetails.map((p) => p.id));
-
       setPosts(postsWithDetails);
-
-      // Önbelleğe kaydet (hata olsa bile devam et)
       await saveToCache(CACHE_KEYS.POSTS, postsWithDetails);
     } catch (error) {
       console.error("Gönderiler alınamadı:", error);
@@ -410,7 +476,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return;
 
     try {
-      // Önbellekten yüklemeyi dene (forceRefresh yoksa)
       if (!forceRefresh) {
         const cachedSaved = await loadFromCache(CACHE_KEYS.SAVED_POSTS);
         if (cachedSaved && Array.isArray(cachedSaved)) {
@@ -423,6 +488,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         .select(
           `
           post_id,
+          created_at,
           post_stats!post_id (*)
         `,
         )
@@ -434,8 +500,10 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
       const savedPostsData = (data || [])
         .map((item: any) => {
           const post = item.post_stats;
+          if (!post) return null;
           return {
             ...post,
+            saved_at: item.created_at, // DÜZELTME: Kaydedilme tarihini dahil ettik
             likes_count: 0,
             shares_count: 0,
             saves_count: 0,
@@ -448,21 +516,25 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         })
         .filter(Boolean);
 
-      // Her kaydedilen gönderi için anket oylarını güncelle
       const savedPostsWithPollVotes = await Promise.all(
         savedPostsData.map(async (post: any) => {
           return await updatePostWithPollVotes(post);
         }),
       );
 
-      // Alıntılanan gönderilerin detaylarını getir
       const savedPostsWithQuotes = await fetchQuotedPosts(
         savedPostsWithPollVotes,
       );
-      setSavedPosts(savedPostsWithQuotes);
 
-      // Önbelleğe kaydet
-      await saveToCache(CACHE_KEYS.SAVED_POSTS, savedPostsWithQuotes);
+      // Kaydedilme tarihine göre sırala
+      const sortedSavedPosts = savedPostsWithQuotes.sort(
+        (a, b) =>
+          new Date(b.saved_at || b.created_at).getTime() -
+          new Date(a.saved_at || a.created_at).getTime(),
+      );
+
+      setSavedPosts(sortedSavedPosts);
+      await saveToCache(CACHE_KEYS.SAVED_POSTS, sortedSavedPosts);
     } catch (error) {
       console.error("Kaydedilen gönderiler alınamadı:", error);
     }
@@ -470,7 +542,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserPosts = async (userId: string, forceRefresh = false) => {
     try {
-      // Önbellekten yüklemeyi dene (forceRefresh yoksa)
       if (!forceRefresh) {
         const cachedUserPosts = await loadFromCache(
           CACHE_KEYS.USER_POSTS(userId),
@@ -480,7 +551,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Kullanıcının kendi gönderileri
       const { data: ownPosts, error: ownError } = await supabase
         .from("post_stats")
         .select("*")
@@ -489,7 +559,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (ownError) throw ownError;
 
-      // Her gönderi için anket oylarını güncelle
       const ownPostsWithPollVotes = await Promise.all(
         (ownPosts || []).map(async (post: any) => {
           return await updatePostWithPollVotes(post);
@@ -502,6 +571,7 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         .select(
           `
           post_id,
+          created_at,
           post_stats!post_id (*)
         `,
         )
@@ -510,17 +580,24 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (sharedError) throw sharedError;
 
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", userId)
+        .single();
+
       const ownPostIds = new Set((ownPosts || []).map((p: any) => p.id));
 
-      // Paylaşılan gönderileri formatla
       const sharedPostsData = (sharedPosts || [])
         .map((item: any) => {
           const post = item.post_stats;
-          if (ownPostIds.has(post.id)) return null;
+          if (!post || ownPostIds.has(post.id)) return null;
           return {
             ...post,
             is_shared_post: true,
             original_post_id: post.id,
+            shared_at: item.created_at, // DÜZELTME: Paylaşılma tarihini verdik
+            shared_by_username: userProfile?.username || "Bir kullanıcı",
             original_user: {
               id: post.user_id,
               username: post.username,
@@ -530,27 +607,24 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
         })
         .filter(Boolean);
 
-      // Paylaşılan gönderiler için anket oylarını güncelle
       const sharedPostsWithPollVotes = await Promise.all(
         sharedPostsData.map(async (post: any) => {
           return await updatePostWithPollVotes(post);
         }),
       );
 
-      // Tüm gönderileri birleştir ve kronolojik sırala
+      // DÜZELTME: Paylaşılma tarihi ile oluşturulma tarihini kronolojik olarak sırala
       const allUserPosts = [
         ...ownPostsWithPollVotes,
         ...sharedPostsWithPollVotes,
       ].sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          new Date(b.shared_at || b.created_at).getTime() -
+          new Date(a.shared_at || a.created_at).getTime(),
       );
 
-      // Alıntılanan gönderilerin detaylarını getir
       const userPostsWithQuotes = await fetchQuotedPosts(allUserPosts);
       setUserPosts(userPostsWithQuotes);
-
-      // Önbelleğe kaydet
       await saveToCache(CACHE_KEYS.USER_POSTS(userId), userPostsWithQuotes);
     } catch (error) {
       console.error("Kullanıcı gönderileri alınamadı:", error);
@@ -567,7 +641,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) throw error;
 
-      // State'i güncelle
       const updatePostInState = (prev: Post[]) =>
         prev.map((p) => {
           if (p.id === postId) {
@@ -608,7 +681,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) throw error;
 
-      // State'i güncelle
       const updatePostInState = (prev: Post[]) =>
         prev.map((p) => {
           if (p.id === postId) {
@@ -665,7 +737,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) throw error;
 
-      // State'i güncelle
       const updatePostInState = (prev: Post[]) =>
         prev.map((p) => {
           if (p.id === postId) {
@@ -691,6 +762,10 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
       setPosts(updatePostInState);
       setSavedPosts(updatePostInState);
 
+      // DÜZELTME: Yeniden gönderilenlerin akışın (feed) en tepesinde belirmesi için
+      // veritabanından akışı tazeleyerek son listeyi ekrana yansıtıyoruz
+      await fetchPosts(true);
+
       if (user.id === user.id) {
         await fetchUserPosts(user.id, true);
       }
@@ -713,7 +788,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) throw error;
 
-      // State'i güncelle
       const updatePostInState = (prev: Post[]) =>
         prev.map((p) => {
           if (p.id === postId) {
@@ -1008,7 +1082,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Görseli Storage'a yükle ve public URL döndür
   const uploadImageToStorage = async (
     uri: string,
     userId: string,
@@ -1172,7 +1245,6 @@ export const PostProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Uygulama başlangıcında eski önbellekleri temizle
   useEffect(() => {
     clearOldCache();
   }, []);

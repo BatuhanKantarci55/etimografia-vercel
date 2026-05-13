@@ -1,0 +1,26 @@
+{
+  "title": "Kullanıcı Sözleşmesi",
+  "lastUpdated": "29 Nisan 2026",
+  "sections": [
+    {
+      "heading": "1. Taraflar ve Kapsam",
+      "body": "Bu sözleşme, Etimografia uygulamasını (bundan böyle 'Uygulama' olarak anılacaktır) kullanan tüm kullanıcılar ile Uygulama geliştiricileri arasında akdedilmiştir. Uygulamaya kayıt olan her kullanıcı bu şartları kabul etmiş sayılır."
+    },
+    {
+      "heading": "2. Hesap Güvenliği",
+      "body": "Kullanıcılar hesaplarına ait şifreleri güvenli bir şekilde saklamakla yükümlüdür. Hesap üzerinden yapılan her türlü işlemden kullanıcının kendisi sorumludur."
+    },
+    {
+      "heading": "3. Hizmetin Sağlanması ve Kesintiler",
+      "body": "Uygulama geliştiricileri, sistemin kesintisiz ve hatasız çalışması için çaba gösterir. Ancak bakım, güncelleme veya elde olmayan teknik nedenlerle yaşanacak veri kayıpları, kesintiler veya hatalar için garanti verilmez ve sorumluluk kabul edilmez."
+    },
+    {
+      "heading": "4. Kullanıcı Yükümlülükleri",
+      "body": "Kullanıcılar; uygulamayı yasalara aykırı, başkalarının haklarını ihlal edecek veya sistemi sabote edecek (hile, spam vb.) şekilde kullanamazlar. İhlal durumunda kullanıcının hesabı uyarısız kapatılabilir."
+    },
+    {
+      "heading": "5. Değişiklikler",
+      "body": "Uygulama yönetimi, bu sözleşme şartlarını tek taraflı olarak değiştirme hakkını saklı tutar. Yapılan değişiklikler uygulamada yayınlandığı andan itibaren geçerli sayılır."
+    }
+  ]
+}

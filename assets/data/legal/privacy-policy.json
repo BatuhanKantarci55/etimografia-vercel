@@ -1,0 +1,22 @@
+{
+  "title": "Gizlilik Politikası",
+  "lastUpdated": "29 Nisan 2026",
+  "sections": [
+    {
+      "heading": "1. Veri Gizliliği ve Şifreleme (Önemli Bildirim)",
+      "body": "Etimografia uygulamasında kullanıcı deneyimini geliştirmek, sistemdeki hataları tespit etmek, destek taleplerini yanıtlamak ve güvenliği sağlamak amacıyla, uygulamaya girdiğiniz veriler (ilerlemeler, skorlar, kullanıcı adları vb.) UÇTAN UCA ŞİFRELİ DEĞİLDİR. Bu veriler sistem yöneticileri tarafından gerekli durumlarda incelenebilir ve görülebilir. Uygulamayı kullanarak bu durumu peşinen kabul etmiş sayılırsınız."
+    },
+    {
+      "heading": "2. Bilgilerin Kullanımı",
+      "body": "Toplanan e-posta adresleri sadece hesap doğrulaması, şifre sıfırlama ve hesap kurtarma işlemleri için kullanılır. Kullanıcılarımıza istenmeyen e-posta (spam) gönderilmez."
+    },
+    {
+      "heading": "3. Çerezler ve Oturum Yönetimi",
+      "body": "Uygulama, oturumunuzu açık tutmak ve tercihlerinizi hatırlamak için cihazınızın yerel depolama alanını kullanır. Bu veriler cihazınızda tutulur ve yalnızca uygulamanın sorunsuz çalışmasını sağlar."
+    },
+    {
+      "heading": "4. Hesap Silme",
+      "body": "Kullanıcılar diledikleri zaman ayarlar menüsü üzerinden hesaplarını silebilirler. Hesap silindiğinde, hesaba ait tanımlayıcı kişisel veriler veri tabanından kalıcı olarak kaldırılır."
+    }
+  ]
+}

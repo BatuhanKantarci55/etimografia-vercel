@@ -37,7 +37,7 @@ export const colorSchemes = {
       primary: "#7c43a0", // Koyu mor
       secondary: "#4A148C", // Daha koyu mor
       background: "#2a243f", // Gece moru
-      card: "#392454",
+      card: "#3c2a54",
       text: "#F3E5F5", // Açık mor metin
       border: "#4c316f",
     },

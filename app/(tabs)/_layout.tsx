@@ -73,40 +73,92 @@ export default function TabsLayout() {
   const { colors, themeMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { scale, isDesktop } = useResponsive();
-  const [activeIndex, setActiveIndex] = useState(2);
-  const scrollViewRef = useRef<ScrollView>(null);
   const { width } = useWindowDimensions();
   const pathname = usePathname();
+
+  const getInitialIndex = () => {
+    if (Platform.OS === "web") {
+      try {
+        const path = window.location.pathname;
+        const normalizedPath = path === "/" ? "index" : path.replace(/^\//, "");
+        const urlIdx = tabComponents.findIndex(
+          (tab) => tab.name === normalizedPath,
+        );
+
+        if (urlIdx !== -1) {
+          return urlIdx;
+        }
+
+        const saved = sessionStorage.getItem("activeTabIndex");
+        if (saved !== null) {
+          return parseInt(saved, 10);
+        }
+      } catch (e) {}
+    }
+    return 2;
+  };
+
+  const [activeIndex, setActiveIndex] = useState(getInitialIndex);
+  const scrollViewRef = useRef<ScrollView>(null);
   const navigationInProgress = useRef(false);
   const lastSessionId = useRef<string | null>(null);
 
-  // 4 Aşamalı (Kademeli) Daralma Mantığı
   const showRightSidebar = isDesktop && width >= 1200;
   const isCompactLeftSidebar = isDesktop && width < 950;
 
-  // Günlük Seri Context
   const {
     streakData,
     loading: streakLoading,
     refreshStreak,
   } = useDailyStreak();
-  // Kullanıcı yoksa misafir için sıfır göster
   const dailyStreak = user ? streakData?.current_streak || 0 : 0;
-  const completedTasks = user ? 12 : 0; // Geçici Örnek Veri
+  const completedTasks = user ? 12 : 0;
 
-  // Düello davetleri
   const { pendingRequests, activeSession } = useDuel();
   const [invitationVisible, setInvitationVisible] = useState(false);
   const [currentInvitation, setCurrentInvitation] = useState<any>(null);
 
-  // Aylık Liderlik (Sağ Kenar Çubuğu İçin)
   const [leaderboardMode, setLeaderboardMode] = useState<"duel" | "practice">(
     "duel",
   );
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
-  // Gelen davetleri kontrol et
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      const tab = tabComponents[activeIndex];
+      const targetPath = tab.name === "index" ? "/" : `/${tab.name}`;
+
+      if (window.location.pathname !== targetPath) {
+        window.history.replaceState(null, "", targetPath);
+      }
+
+      try {
+        sessionStorage.setItem("activeTabIndex", activeIndex.toString());
+      } catch (e) {}
+    }
+  }, [activeIndex]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      const handlePopState = () => {
+        const path = window.location.pathname;
+        const normalizedPath = path === "/" ? "index" : path.replace(/^\//, "");
+        const idx = tabComponents.findIndex(
+          (tab) => tab.name === normalizedPath,
+        );
+        if (idx !== -1) {
+          setActiveIndex(idx);
+        } else {
+          setActiveIndex(2);
+        }
+      };
+
+      window.addEventListener("popstate", handlePopState);
+      return () => window.removeEventListener("popstate", handlePopState);
+    }
+  }, []);
+
   useEffect(() => {
     if (pendingRequests && pendingRequests.length > 0) {
       const latestRequest = pendingRequests[0];
@@ -117,7 +169,6 @@ export default function TabsLayout() {
     }
   }, [pendingRequests]);
 
-  // Aktif düello oturumu varsa session sayfasına yönlendir
   useEffect(() => {
     if (!activeSession) return;
 
@@ -148,18 +199,16 @@ export default function TabsLayout() {
     }
   }, [activeSession, pathname]);
 
-  // Bilgisayarda isek aylık liderlik tablosunu çek
   useEffect(() => {
     if (isDesktop && showRightSidebar) {
       fetchMonthlyLeaderboard();
     }
   }, [isDesktop, showRightSidebar, leaderboardMode]);
 
-  // Aylık liderlik verisini Supabase'den çek
   const fetchMonthlyLeaderboard = async () => {
     setLeaderboardLoading(true);
     try {
-      const currentPeriod = new Date().toISOString().slice(0, 7); // "YYYY-MM" formatı
+      const currentPeriod = new Date().toISOString().slice(0, 7);
       const sortColumn =
         leaderboardMode === "duel" ? "duel_trophies" : "practice_score";
 
@@ -176,7 +225,7 @@ export default function TabsLayout() {
         )
         .eq("period", currentPeriod)
         .order(sortColumn, { ascending: false })
-        .limit(7);
+        .limit(3);
 
       if (error) {
         console.error("Liderlik sıralaması çekilirken hata:", error);
@@ -194,7 +243,6 @@ export default function TabsLayout() {
               : item.practice_score,
         }));
 
-        // Puanı 0 olanları hariç tut
         setLeaderboardData(mappedData.filter((m) => m.points > 0));
       }
     } catch (err) {
@@ -217,8 +265,6 @@ export default function TabsLayout() {
     );
   }
 
-  // MİSAFİR GİRİŞİNİ ENGELLEYEN Redirect KALDIRILDI!
-  // Yalnızca kullanıcı giriş yapmış ancak e-postasını doğrulamamışsa yönlendir.
   if (user && !user.email_confirmed_at) {
     return <Redirect href="/verify-email" />;
   }
@@ -232,6 +278,7 @@ export default function TabsLayout() {
   };
 
   const handleTabPress = (index: number) => {
+    if (index === activeIndex) return;
     setActiveIndex(index);
     if (!isDesktop) {
       scrollViewRef.current?.scrollTo({ x: width * index, animated: true });
@@ -241,7 +288,6 @@ export default function TabsLayout() {
   const tabBarBackgroundColor =
     themeMode === "dark" ? colors.card + "DD" : colors.card + "FF";
 
-  // İstenen menü sırası: Profil (4), Akış (3), Ana sayfa (2), Sözlük (1), Mağaza (0)
   const desktopMenuOrder = [4, 3, 2, 1, 0];
 
   const layoutContent = (
@@ -254,7 +300,6 @@ export default function TabsLayout() {
         },
       ]}
     >
-      {/* MASAÜSTÜ SOL KENAR ÇUBUĞU */}
       {isDesktop && (
         <View
           style={[
@@ -437,7 +482,6 @@ export default function TabsLayout() {
         </View>
       )}
 
-      {/* ORTA ANA İÇERİK */}
       <View
         style={[
           styles.mainContentWrapper,
@@ -467,7 +511,9 @@ export default function TabsLayout() {
             onMomentumScrollEnd={handleSwipe}
             scrollEventThrottle={16}
             style={styles.scrollView}
-            contentOffset={{ x: width * 2, y: 0 }}
+            contentOffset={
+              width > 0 ? { x: width * activeIndex, y: 0 } : undefined
+            }
           >
             {tabComponents.map((tab, index) => (
               <View key={tab.name} style={{ width, flex: 1 }}>
@@ -478,7 +524,6 @@ export default function TabsLayout() {
         )}
       </View>
 
-      {/* MASAÜSTÜ SAĞ KENAR ÇUBUĞU - 1200px altına inilirse sağ kolon gizlenir */}
       {isDesktop && showRightSidebar && (
         <View
           style={[
@@ -487,7 +532,6 @@ export default function TabsLayout() {
           ]}
         >
           <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
-            {/* Günlük Seri */}
             <TouchableOpacity
               style={[
                 styles.rightTopBox,
@@ -526,7 +570,6 @@ export default function TabsLayout() {
               </CustomText>
             </TouchableOpacity>
 
-            {/* Görevler */}
             <TouchableOpacity
               style={[
                 styles.rightTopBox,
@@ -578,7 +621,6 @@ export default function TabsLayout() {
             </TouchableOpacity>
           </View>
 
-          {/* Aylık Liderlik Alanı ve Kutu İçi Seçim Menüsü */}
           <View
             style={[
               styles.leaderboardCard,
@@ -602,7 +644,6 @@ export default function TabsLayout() {
                 Sıralama
               </CustomText>
 
-              {/* Mod Seçici Küçük Kutu */}
               <View
                 style={[
                   styles.miniSwitcher,
@@ -690,27 +731,39 @@ export default function TabsLayout() {
                   >
                     {idx + 1}
                   </CustomText>
-                  <Image
-                    source={getAvatarSource(player.avatar_index || 0)}
-                    style={styles.leaderboardAvatar}
-                  />
-                  <View style={styles.leaderboardInfo}>
-                    <CustomText
-                      style={[styles.leaderboardName, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {player.username}
-                    </CustomText>
-                    <CustomText
-                      style={[
-                        styles.leaderboardPoints,
-                        { color: colors.primary },
-                      ]}
-                    >
-                      {player.points}{" "}
-                      {leaderboardMode === "duel" ? "Kupa" : "Puan"}
-                    </CustomText>
-                  </View>
+                  {/* DÜZELTME: Avatar ve İsim bölümü tıklanabilir yapılarak profile yönlendirildi */}
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flex: 1,
+                      gap: 12,
+                    }}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/user/${player.user_id}`)}
+                  >
+                    <Image
+                      source={getAvatarSource(player.avatar_index || 0)}
+                      style={styles.leaderboardAvatar}
+                    />
+                    <View style={styles.leaderboardInfo}>
+                      <CustomText
+                        style={[styles.leaderboardName, { color: colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {player.username}
+                      </CustomText>
+                      <CustomText
+                        style={[
+                          styles.leaderboardPoints,
+                          { color: colors.primary },
+                        ]}
+                      >
+                        {player.points}{" "}
+                        {leaderboardMode === "duel" ? "Kupa" : "Puan"}
+                      </CustomText>
+                    </View>
+                  </TouchableOpacity>
                 </View>
               ))
             ) : (
@@ -727,14 +780,13 @@ export default function TabsLayout() {
             )}
 
             <TouchableOpacity
-              style={{ marginTop: 12, alignItems: "center" }}
+              style={{ marginTop: 6, alignItems: "center" }}
               onPress={() => router.push("/duel/leaderboard")}
             >
               <CustomText
                 style={{
                   color: colors.primary,
                   fontSize: 13,
-                  fontWeight: "600",
                 }}
               >
                 Tümünü Gör
@@ -742,7 +794,6 @@ export default function TabsLayout() {
             </TouchableOpacity>
           </View>
 
-          {/* MİSAFİR KULLANICILAR İÇİN GİRİŞ YAP KUTUSU */}
           {!user && (
             <TouchableOpacity
               style={[
@@ -788,7 +839,6 @@ export default function TabsLayout() {
         </View>
       )}
 
-      {/* MOBİL ALT TAB BAR */}
       {!isDesktop && (
         <View
           style={[
@@ -857,7 +907,6 @@ export default function TabsLayout() {
         </View>
       )}
 
-      {/* Düello Davet Modalı */}
       <InvitationModal
         visible={invitationVisible}
         request={currentInvitation}
@@ -887,7 +936,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // Masaüstü Sol Kenar Çubuğu Stilleri
   leftSidebar: {
     width: 250,
     padding: 20,
@@ -920,7 +968,6 @@ const styles = StyleSheet.create({
   sidebarItemText: {
     fontSize: 18,
   },
-  // Orta Ana İçerik Stilleri
   mainContentWrapper: {
     flex: 1,
     width: "100%",
@@ -930,7 +977,6 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  // Masaüstü Sağ Kenar Çubuğu Stilleri
   rightSidebar: {
     width: 360,
     padding: 20,
@@ -1006,7 +1052,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
-  // Masaüstü Giriş Yap Kutusu Stilleri
   loginActionBox: {
     marginTop: 20,
     borderRadius: 16,
@@ -1051,7 +1096,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 14,
   },
-  // Mobil Alt Çubuk Stilleri
   tabBar: {
     flexDirection: "row",
   },

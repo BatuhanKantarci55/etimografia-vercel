@@ -28,6 +28,7 @@ interface PostActionsProps {
   username?: string;
   text?: string;
   postUserId?: string;
+  onUserPress?: (userId: string) => void; // DÜZELTME: Tıklanabilirlik için prop eklendi
 }
 
 export default function PostActions({
@@ -46,13 +47,16 @@ export default function PostActions({
   username = "",
   text = "",
   postUserId,
+  onUserPress,
 }: PostActionsProps) {
   const { user } = useAuth();
   const { colors } = useTheme();
   const { scale, isDesktop } = useResponsive();
   const [shareMenuVisible, setShareMenuVisible] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const isOwnPost = user?.id === postUserId;
+  const TEXT_LIMIT = 100;
 
   const handleSharePress = () => {
     setShareMenuVisible(true);
@@ -315,30 +319,48 @@ export default function PostActions({
         </TouchableOpacity>
       </View>
 
-      {/* DÜZELTME: Açıklama metni iki kere görünmesin diye ve daha zarif olsun diye burada tutulup, boyutu ve dikey boşlukları azaltıldı */}
+      {/* DÜZELTME: Metin ve kullanıcı adı yan yana (inline) yazdırıldı ve isme tıklama eklendi */}
       {showUsername && (
         <View style={[styles.caption, { marginTop: scale(isDesktop ? 2 : 8) }]}>
           <CustomText
             style={{
-              fontSize: scale(isDesktop ? 10 : 14), // DÜZELTME: Boyutlar daha da küçültüldü
-              fontWeight: "600",
-              color: colors.text,
+              fontSize: scale(isDesktop ? 10 : 14),
+              color: colors.text + "80",
             }}
           >
-            {username}
-          </CustomText>
-          {text && (
             <CustomText
-              fontFamily="medium" // DÜZELTME: Metin fontu medium yapıldı
               style={{
-                fontSize: scale(isDesktop ? 10 : 14), // DÜZELTME: Boyutlar daha da küçültüldü
-                color: colors.text + "80",
-                marginLeft: scale(4),
+                fontWeight: "600",
+                color: colors.text,
+              }}
+              onPress={() => {
+                if (onUserPress && postUserId) {
+                  onUserPress(postUserId);
+                }
               }}
             >
-              {text.length > 50 ? text.substring(0, 50) + "..." : text}
+              {username}{" "}
             </CustomText>
-          )}
+
+            {text && (
+              <CustomText fontFamily="medium">
+                {isExpanded || text.length <= TEXT_LIMIT
+                  ? text
+                  : text.substring(0, TEXT_LIMIT) + "... "}
+                {!isExpanded && text.length > TEXT_LIMIT && (
+                  <CustomText
+                    fontFamily="extraBold"
+                    style={{
+                      color: colors.primary,
+                    }}
+                    onPress={() => setIsExpanded(true)}
+                  >
+                    devamını gör
+                  </CustomText>
+                )}
+              </CustomText>
+            )}
+          </CustomText>
         </View>
       )}
     </View>
@@ -346,9 +368,7 @@ export default function PostActions({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    // DÜZELTME: Üstteki çizgi (borderTopWidth) tamamen kaldırıldı
-  },
+  container: {},
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -371,8 +391,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   caption: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     paddingHorizontal: 4,
   },
   modalOverlay: {

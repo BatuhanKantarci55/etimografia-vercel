@@ -1,0 +1,26 @@
+{
+  "title": "Aydınlatma Metni (KVKK)",
+  "lastUpdated": "29 Nisan 2026",
+  "sections": [
+    {
+      "heading": "1. Veri Sorumlusu",
+      "body": "6698 sayılı Kişisel Verilerin Korunması Kanunu ('KVKK') uyarınca, Etimografia uygulaması ('Uygulama') olarak, kişisel verileriniz aşağıda açıklanan kapsamda işlenebilecektir."
+    },
+    {
+      "heading": "2. Kişisel Verilerin Hangi Amaçla İşleneceği",
+      "body": "Toplanan kişisel verileriniz (Kullanıcı Adı, E-Posta, İlerleme İstatistikleri vb.); uygulamanın sunulması, oyun eşleştirmelerinin yapılması, liderlik sıralamalarının oluşturulması ve hesap güvenliğinin sağlanması amaçlarıyla işlenmektedir."
+    },
+    {
+      "heading": "3. İşlenen Kişisel Verilerin Kimlere ve Hangi Amaçla Aktarılabileceği",
+      "body": "Kişisel verileriniz, yasal zorunluluklar haricinde üçüncü şahıslarla ticari amaçlarla paylaşılmamaktadır. Sadece uygulama altyapısını sağlayan bulut bilişim servisleri (örn. Supabase) üzerinde barındırılmaktadır."
+    },
+    {
+      "heading": "4. Kişisel Veri Toplamanın Yöntemi ve Hukuki Sebebi",
+      "body": "Kişisel verileriniz, uygulamaya kayıt olmanız ve uygulamayı kullanımınız sırasında elektronik ortamda, 'Bir sözleşmenin kurulması veya ifasıyla doğrudan doğruya ilgili olması' hukuki sebebine dayanarak toplanmaktadır."
+    },
+    {
+      "heading": "5. KVKK Madde 11 Kapsamındaki Haklarınız",
+      "body": "Kişisel veri sahibi olarak; verilerinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme ve silinmesini talep etme haklarına sahipsiniz."
+    }
+  ]
+}

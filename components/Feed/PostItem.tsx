@@ -13,13 +13,15 @@ import { useResponsive } from "@hooks/useResponsive";
 import { supabase } from "@lib/supabase";
 import { getAvatarSource } from "@utils/avatarUtils";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
-  Modal, Platform, StyleSheet,
+  Modal,
+  Platform,
+  StyleSheet,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 interface PostItemProps {
@@ -32,6 +34,8 @@ interface PostItemProps {
   onUserPress?: (userId: string) => void;
   onDelete?: () => void;
   onQuote?: (postId: string, quoteText: string) => Promise<any>;
+  onPostPress?: (post: Post) => void;
+  children?: React.ReactNode; // Yorumlar vs. içeri eklenebilsin diye eklendi
 }
 
 export default function PostItem({
@@ -44,8 +48,10 @@ export default function PostItem({
   onUserPress,
   onDelete,
   onQuote,
+  onPostPress,
+  children,
 }: PostItemProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth() as any;
   const { colors } = useTheme();
   const { scale, isDesktop } = useResponsive();
   const { checkFollowStatus, followUser, unfollowUser, addFollowListener } =
@@ -58,6 +64,9 @@ export default function PostItem({
   const [imageError, setImageError] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+
+  const [quoteExpanded, setQuoteExpanded] = useState(false);
+  const QUOTE_LIMIT = 100;
 
   const [avatarIndex, setAvatarIndex] = useState(post.avatar_index || 0);
   const [username, setUsername] = useState(post.username || "Kullanıcı");
@@ -200,7 +209,6 @@ export default function PostItem({
 
     const confirmDelete = () => {
       if (Platform.OS === "web") {
-        // Web'de window.confirm kullan
         const confirmed = window.confirm(
           "Bu gönderiyi silmek istediğinize emin misiniz?",
         );
@@ -208,7 +216,6 @@ export default function PostItem({
           onDelete();
         }
       } else {
-        // Mobilde Alert.alert kullan
         Alert.alert(
           "Gönderiyi Sil",
           "Bu gönderiyi silmek istediğinize emin misiniz?",
@@ -289,8 +296,15 @@ export default function PostItem({
   const isOwnPost = user?.id === post.user_id;
   const isQuote = !!post.quoted_post_id;
 
+  const quotedContentText =
+    post.quoted_post?.quote_text || post.quoted_post?.content || "";
+
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.98}
+      onPress={() => {
+        if (onPostPress) onPostPress(post);
+      }}
       style={[
         styles.container,
         {
@@ -302,82 +316,131 @@ export default function PostItem({
         isDesktop && { width: "80%", alignSelf: "center" },
       ]}
     >
+      {(post as any).shared_at && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: scale(12),
+            paddingTop: scale(isDesktop ? 6 : 10),
+            paddingBottom: scale(isDesktop ? 0 : 2),
+          }}
+        >
+          <Ionicons
+            name="repeat"
+            size={scale(isDesktop ? 10 : 14)}
+            color={colors.text + "80"}
+          />
+          <CustomText
+            fontFamily="medium"
+            style={{
+              fontSize: scale(isDesktop ? 9 : 12),
+              color: colors.text + "80",
+              marginLeft: scale(6),
+            }}
+          >
+            {(post as any).shared_by_username === profile?.username
+              ? "Yeniden gönderdiniz"
+              : `${(post as any).shared_by_username || "Bir kullanıcı"} yeniden gönderdi`}
+          </CustomText>
+        </View>
+      )}
+
       <View
         style={[
           styles.header,
           {
             paddingHorizontal: scale(12),
-            paddingVertical: scale(isDesktop ? 6 : 12),
+            paddingTop: (post as any).shared_at
+              ? scale(isDesktop ? 2 : 4)
+              : scale(isDesktop ? 4 : 12),
+            paddingBottom: scale(
+              isDesktop ? 4 : post.post_type === "text" ? 6 : 12,
+            ),
             borderBottomWidth: isQuote ? 0 : StyleSheet.hairlineWidth,
             borderBottomColor: colors.text + "20",
           },
         ]}
       >
-        <TouchableOpacity
-          style={styles.userInfo}
-          onPress={handleUserPressInternal}
-          activeOpacity={0.7}
+        <View
+          style={[
+            styles.userInfo,
+            { flex: 1, flexDirection: "row", alignItems: "center" },
+          ]}
         >
-          <View
-            style={[
-              styles.avatar,
-              {
-                width: scale(isDesktop ? 28 : 40),
-                height: scale(isDesktop ? 28 : 40),
-                borderRadius: scale(isDesktop ? 14 : 20),
-                backgroundColor: colors.primary + "20",
-                marginRight: scale(10),
-                overflow: "hidden",
-              },
-            ]}
+          {/* DÜZELTME: Sadece avatar ve isim kısmına tıklanabilir özellik verildi, flex alanı kaldırıldı */}
+          <TouchableOpacity
+            onPress={(e: any) => {
+              e.stopPropagation();
+              handleUserPressInternal();
+            }}
+            activeOpacity={0.7}
+            style={{ flexDirection: "row", alignItems: "center" }}
           >
-            {!imageError ? (
-              <Image
-                source={getAvatarSourceForUser()}
-                style={styles.avatarImage}
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <View
-                style={[
-                  styles.avatarImage,
-                  { justifyContent: "center", alignItems: "center" },
-                ]}
-              >
-                <CustomText
-                  style={{
-                    fontSize: scale(isDesktop ? 10 : 18),
-                    color: colors.primary,
-                  }}
-                >
-                  {username?.charAt(0)?.toUpperCase() || "U"}
-                </CustomText>
-              </View>
-            )}
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <CustomText
-              style={{
-                fontSize: scale(isDesktop ? 10 : 14),
-                color: colors.text,
-              }}
+            <View
+              style={[
+                styles.avatar,
+                {
+                  width: scale(isDesktop ? 28 : 40),
+                  height: scale(isDesktop ? 28 : 40),
+                  borderRadius: scale(isDesktop ? 14 : 20),
+                  backgroundColor: colors.primary + "20",
+                  marginRight: scale(10),
+                  overflow: "hidden",
+                },
+              ]}
             >
-              {username}
-            </CustomText>
-            {fullName && (
+              {!imageError ? (
+                <Image
+                  source={getAvatarSourceForUser()}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.avatarImage,
+                    { justifyContent: "center", alignItems: "center" },
+                  ]}
+                >
+                  <CustomText
+                    style={{
+                      fontSize: scale(isDesktop ? 10 : 18),
+                      color: colors.primary,
+                    }}
+                  >
+                    {username?.charAt(0)?.toUpperCase() || "U"}
+                  </CustomText>
+                </View>
+              )}
+            </View>
+
+            <View style={{ justifyContent: "center", paddingRight: scale(10) }}>
               <CustomText
                 style={{
-                  fontSize: scale(isDesktop ? 9 : 12),
-                  color: colors.text + "80",
+                  fontSize: scale(isDesktop ? 9 : 14),
+                  color: colors.text,
+                  lineHeight: scale(isDesktop ? 12 : 18),
                 }}
               >
-                {fullName}
+                {username}
               </CustomText>
-            )}
-          </View>
-        </TouchableOpacity>
+              {fullName && (
+                <CustomText
+                  style={{
+                    fontSize: scale(isDesktop ? 8 : 12),
+                    color: colors.text + "80",
+                    marginTop: scale(isDesktop ? -1 : 0),
+                    lineHeight: scale(isDesktop ? 10 : 16),
+                  }}
+                >
+                  {fullName}
+                </CustomText>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
 
         {!isOwnPost && (
           <TouchableOpacity
@@ -393,7 +456,10 @@ export default function PostItem({
                 marginRight: scale(8),
               },
             ]}
-            onPress={handleFollowToggle}
+            onPress={(e: any) => {
+              e.stopPropagation();
+              handleFollowToggle();
+            }}
             disabled={followLoading}
           >
             <CustomText
@@ -413,7 +479,10 @@ export default function PostItem({
         )}
 
         <TouchableOpacity
-          onPress={handleMorePress}
+          onPress={(e: any) => {
+            e.stopPropagation();
+            handleMorePress();
+          }}
           style={[styles.moreButton, { padding: scale(5) }]}
           activeOpacity={0.7}
         >
@@ -424,7 +493,6 @@ export default function PostItem({
           />
         </TouchableOpacity>
 
-        {/* Modal - Web'de tıklama sorununu çözmek için event propagation durduruldu */}
         <Modal
           visible={menuVisible}
           transparent
@@ -579,7 +647,14 @@ export default function PostItem({
       )}
 
       {post.quoted_post && (
-        <View
+        <TouchableOpacity
+          activeOpacity={0.95}
+          onPress={(e: any) => {
+            e.stopPropagation(); // Ana gönderinin açılmasını engeller
+            if (onPostPress && post.quoted_post) {
+              onPostPress(post.quoted_post as Post);
+            }
+          }}
           style={[
             styles.quotedPost,
             {
@@ -597,84 +672,149 @@ export default function PostItem({
           <View
             style={[
               styles.quotedUserInfo,
-              { padding: scale(8), marginBottom: 0 },
+              {
+                paddingHorizontal: scale(10),
+                paddingTop: scale(10),
+                paddingBottom: scale(isDesktop ? 2 : 4),
+                marginBottom: 0,
+              },
             ]}
           >
-            <View
-              style={[
-                styles.quotedAvatar,
-                {
-                  width: scale(24),
-                  height: scale(24),
-                  borderRadius: scale(12),
-                  backgroundColor: colors.primary + "20",
-                  marginRight: scale(6),
-                  overflow: "hidden",
-                },
-              ]}
-            >
-              <Image
-                source={getQuotedUserAvatar()}
-                style={styles.avatarImage}
-                resizeMode="cover"
-              />
-            </View>
-            <CustomText
-              style={{
-                fontSize: scale(isDesktop ? 10 : 12),
-                color: colors.text,
+            {/* DÜZELTME: Sadece avatar ve isim kısmına tıklanabilir özellik verildi, boşluk gönderiyi açacak */}
+            <TouchableOpacity
+              onPress={(e: any) => {
+                e.stopPropagation();
+                const quotedUserId = post.quoted_post?.user_id;
+                if (quotedUserId) {
+                  if (onUserPress) onUserPress(quotedUserId);
+                  else router.push(`/user/${quotedUserId}`);
+                }
               }}
+              activeOpacity={0.7}
+              style={{ flexDirection: "row", alignItems: "center" }}
             >
-              {post.quoted_post.username}
-            </CustomText>
+              <View
+                style={[
+                  styles.quotedAvatar,
+                  {
+                    width: scale(isDesktop ? 24 : 32),
+                    height: scale(isDesktop ? 24 : 32),
+                    borderRadius: scale(isDesktop ? 12 : 16),
+                    backgroundColor: colors.primary + "20",
+                    marginRight: scale(8),
+                    overflow: "hidden",
+                  },
+                ]}
+              >
+                <Image
+                  source={getQuotedUserAvatar()}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <View
+                style={{ justifyContent: "center", paddingRight: scale(10) }}
+              >
+                <CustomText
+                  style={{
+                    fontSize: scale(isDesktop ? 9 : 14),
+                    color: colors.text,
+                    lineHeight: scale(isDesktop ? 12 : 18),
+                  }}
+                >
+                  {post.quoted_post.username}
+                </CustomText>
+                {post.quoted_post.full_name && (
+                  <CustomText
+                    style={{
+                      fontSize: scale(isDesktop ? 8 : 12),
+                      color: colors.text + "80",
+                      marginTop: scale(isDesktop ? -1 : 0),
+                      lineHeight: scale(isDesktop ? 10 : 16),
+                    }}
+                  >
+                    {post.quoted_post.full_name}
+                  </CustomText>
+                )}
+              </View>
+            </TouchableOpacity>
           </View>
 
-          <PostContent
-            content={{
-              type: post.quoted_post.post_type,
-              text: post.quoted_post.content,
-              image: post.quoted_post.image_url,
-              video: post.quoted_post.video_url,
-              poll: post.quoted_post.poll_data,
-            }}
-            postId={post.quoted_post.id}
-            userVotedOption={post.quoted_post.user_voted_option}
-            isQuoted={true}
-          />
+          <View
+            style={
+              ["text", "poll"].includes(post.quoted_post.post_type)
+                ? { marginTop: scale(isDesktop ? -2 : -10) }
+                : {}
+            }
+          >
+            <PostContent
+              content={{
+                type: post.quoted_post.post_type,
+                text: quotedContentText,
+                image: post.quoted_post.image_url,
+                video: post.quoted_post.video_url,
+                poll: post.quoted_post.poll_data,
+              }}
+              postId={post.quoted_post.id}
+              userVotedOption={post.quoted_post.user_voted_option}
+              isQuoted={true}
+            />
+          </View>
 
-          {post.quoted_post.content &&
+          {quotedContentText &&
             ["image", "video"].includes(post.quoted_post.post_type) && (
               <View
                 style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
                   paddingHorizontal: scale(12),
                   paddingBottom: scale(12),
+                  marginTop: scale(4),
                 }}
               >
                 <CustomText
                   style={{
                     fontSize: scale(isDesktop ? 10 : 12),
-                    color: colors.text,
-                  }}
-                >
-                  {post.quoted_post.username}
-                </CustomText>
-                <CustomText
-                  fontFamily="medium"
-                  style={{
-                    fontSize: scale(isDesktop ? 10 : 12),
                     color: colors.text + "80",
-                    marginLeft: scale(4),
                   }}
                 >
-                  {post.quoted_post.content.length > 50
-                    ? post.quoted_post.content.substring(0, 50) + "..."
-                    : post.quoted_post.content}
+                  <CustomText
+                    style={{
+                      fontWeight: "600",
+                      color: colors.text,
+                    }}
+                    onPress={(e: any) => {
+                      e.stopPropagation();
+                      const quotedUserId = post.quoted_post?.user_id;
+                      if (quotedUserId) {
+                        if (onUserPress) onUserPress(quotedUserId);
+                        else router.push(`/user/${quotedUserId}`);
+                      }
+                    }}
+                  >
+                    {post.quoted_post?.username}{" "}
+                  </CustomText>
+
+                  <CustomText fontFamily="medium">
+                    {quoteExpanded || quotedContentText.length <= QUOTE_LIMIT
+                      ? quotedContentText
+                      : quotedContentText.substring(0, QUOTE_LIMIT) + "... "}
+                    {!quoteExpanded &&
+                      quotedContentText.length > QUOTE_LIMIT && (
+                        <CustomText
+                          fontFamily="extraBold"
+                          style={{ color: colors.primary }}
+                          onPress={(e: any) => {
+                            e.stopPropagation();
+                            setQuoteExpanded(true);
+                          }}
+                        >
+                          devamını gör
+                        </CustomText>
+                      )}
+                  </CustomText>
                 </CustomText>
               </View>
             )}
-        </View>
+        </TouchableOpacity>
       )}
 
       {!isQuote && (
@@ -692,35 +832,46 @@ export default function PostItem({
         />
       )}
 
-      <PostActions
-        stats={{
-          likes: localStats.likes,
-          comments: localStats.comments,
-          shares: localStats.shares,
-          saves: localStats.saves,
-          quotes: localStats.quotes,
-        }}
-        userLiked={localUserLiked}
-        userShared={localUserShared}
-        userSaved={localUserSaved}
-        onLike={handleLike}
-        onShare={handleShare}
-        onSave={handleSave}
-        onComment={handleCommentPress}
-        onQuote={() => setQuoteModalVisible(true)}
-        onSend={handleSendPress}
-        showUsername={["image", "video"].includes(post.post_type) && !isQuote}
-        username={username}
-        text={post.content}
-        postUserId={post.user_id}
-      />
+      <View
+        style={
+          post.post_type === "text" && !isQuote
+            ? { marginTop: scale(isDesktop ? -6 : -10) }
+            : {}
+        }
+      >
+        <PostActions
+          stats={{
+            likes: localStats.likes,
+            comments: localStats.comments,
+            shares: localStats.shares,
+            saves: localStats.saves,
+            quotes: localStats.quotes,
+          }}
+          userLiked={localUserLiked}
+          userShared={localUserShared}
+          userSaved={localUserSaved}
+          onLike={handleLike}
+          onShare={handleShare}
+          onSave={handleSave}
+          onComment={handleCommentPress}
+          onQuote={() => setQuoteModalVisible(true)}
+          onSend={handleSendPress}
+          showUsername={["image", "video"].includes(post.post_type) && !isQuote}
+          username={username}
+          text={post.content}
+          postUserId={post.user_id}
+          onUserPress={handleUserPressInternal}
+        />
+      </View>
 
       <View
         style={[
           styles.footer,
           {
             paddingHorizontal: scale(12),
-            paddingVertical: scale(isDesktop ? 2 : 12),
+            paddingTop: scale(isDesktop ? 2 : 0),
+            paddingBottom: scale(isDesktop ? 2 : 12),
+            marginTop: scale(isDesktop ? 0 : -6),
           },
         ]}
       >
@@ -731,9 +882,12 @@ export default function PostItem({
             color: colors.text + "60",
           }}
         >
-          {formatTime(post.created_at)}
+          {formatTime((post as any).shared_at || post.created_at)}
         </CustomText>
       </View>
+
+      {/* DÜZELTME: Yorumlar gönderinin içinde yer alabilsin diye prop kullanıldı */}
+      {children}
 
       {onQuote && (
         <QuoteModal
@@ -758,7 +912,7 @@ export default function PostItem({
         onClose={() => setShareModalVisible(false)}
         post={post}
       />
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -778,7 +932,6 @@ const styles = StyleSheet.create({
   userInfo: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
   },
   avatar: {
     justifyContent: "center",

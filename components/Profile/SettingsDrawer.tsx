@@ -15,6 +15,7 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -32,13 +33,18 @@ export default function SettingsDrawer({
   visible,
   onClose,
 }: SettingsDrawerProps) {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, deleteAccount } = useAuth();
   const { colors, themeMode, toggleTheme, appMode, setAppMode } = useTheme();
   const { scale, isDesktop } = useResponsive();
   const [notifications, setNotifications] = useState(true);
   const [soundEffects, setSoundEffects] = useState(true);
   const [editProfileVisible, setEditProfileVisible] = useState(false);
   const [authModalVisible, setAuthModalVisible] = useState(false);
+
+  // Hesap silme modali state'leri
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const drawerWidth = isDesktop ? scale(240) : SCREEN_WIDTH * 0.85;
 
@@ -55,7 +61,7 @@ export default function SettingsDrawer({
   const openDrawer = () => {
     Animated.parallel([
       Animated.timing(translateX, {
-        toValue: 0, // 0 yapınca tamamen sola gelir
+        toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }),
@@ -70,7 +76,7 @@ export default function SettingsDrawer({
   const closeDrawer = () => {
     Animated.parallel([
       Animated.timing(translateX, {
-        toValue: SCREEN_WIDTH, // Tamamen sağa kaybolacak
+        toValue: SCREEN_WIDTH,
         duration: 300,
         useNativeDriver: true,
       }),
@@ -89,7 +95,6 @@ export default function SettingsDrawer({
 
   const onHandlerStateChange = (event: any) => {
     if (event.nativeEvent.state === State.END) {
-      // Kaydırma miktarına göre kapat veya aç
       if (event.nativeEvent.translationX > 100) {
         closeDrawer();
       } else {
@@ -102,7 +107,6 @@ export default function SettingsDrawer({
     try {
       await signOut();
       closeDrawer();
-      // AuthContext'teki `useEffect` otomatik olarak yönlendirme yapacak
     } catch (error) {
       console.error("Çıkış yapılamadı:", error);
       if (Platform.OS === "web") {
@@ -114,7 +118,6 @@ export default function SettingsDrawer({
   };
 
   const handleSignOut = () => {
-    // Web için native alert çalışmaz, bu yüzden window.confirm kullanıyoruz
     if (Platform.OS === "web") {
       const isConfirmed = window.confirm(
         "Hesabınızdan çıkış yapmak istediğinize emin misiniz?",
@@ -123,7 +126,6 @@ export default function SettingsDrawer({
         performSignOut();
       }
     } else {
-      // Mobil cihazlar için native Alert
       Alert.alert(
         "Çıkış Yap",
         "Hesabınızdan çıkış yapmak istediğinize emin misiniz?",
@@ -143,7 +145,7 @@ export default function SettingsDrawer({
   };
 
   const handleEditProfile = () => {
-    closeDrawer(); // Önce drawer'ı kapat
+    closeDrawer();
     if (!user) {
       setTimeout(() => {
         setAuthModalVisible(true);
@@ -151,13 +153,39 @@ export default function SettingsDrawer({
       return;
     }
     setTimeout(() => {
-      setEditProfileVisible(true); // Sonra edit modalını aç
+      setEditProfileVisible(true);
     }, 300);
+  };
+
+  const navigateToPage = (path: any) => {
+    closeDrawer();
+    setTimeout(() => {
+      router.push(path);
+    }, 300);
+  };
+
+  // Hesap silme işlemi
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    const { error } = await deleteAccount();
+    setIsDeleting(false);
+
+    if (error) {
+      if (Platform.OS === "web") {
+        window.alert("Hesap silinirken bir hata oluştu.");
+      } else {
+        Alert.alert("Hata", "Hesap silinirken bir hata oluştu.");
+      }
+    } else {
+      setDeleteModalVisible(false);
+      setDeleteConfirmText("");
+      closeDrawer();
+      router.push("/(auth)");
+    }
   };
 
   const appModes = ["education", "practice", "competition", "event"] as const;
 
-  // Mode isimlerini Türkçeleştir
   const getModeName = (mode: string) => {
     switch (mode) {
       case "education":
@@ -173,7 +201,6 @@ export default function SettingsDrawer({
     }
   };
 
-  // Mode ikonlarını belirle
   const getModeIcon = (mode: string) => {
     switch (mode) {
       case "education":
@@ -338,7 +365,6 @@ export default function SettingsDrawer({
                     GÖRÜNÜM VE MOD
                   </CustomText>
 
-                  {/* Tema Değiştir */}
                   <TouchableOpacity
                     style={[
                       styles.menuItem,
@@ -378,7 +404,6 @@ export default function SettingsDrawer({
                     />
                   </TouchableOpacity>
 
-                  {/* Mod Değiştir */}
                   <TouchableOpacity
                     style={[
                       styles.menuItem,
@@ -446,7 +471,6 @@ export default function SettingsDrawer({
                     BİLDİRİMLER
                   </CustomText>
 
-                  {/* Bildirimler Switch */}
                   <View
                     style={[
                       styles.menuItem,
@@ -488,7 +512,6 @@ export default function SettingsDrawer({
                     />
                   </View>
 
-                  {/* Ses Efektleri Switch */}
                   <View
                     style={[
                       styles.menuItem,
@@ -605,6 +628,7 @@ export default function SettingsDrawer({
                         marginBottom: scale(isDesktop ? 4 : 10),
                       },
                     ]}
+                    onPress={() => navigateToPage("/privacy")}
                   >
                     <View
                       style={{ flexDirection: "row", alignItems: "center" }}
@@ -621,7 +645,83 @@ export default function SettingsDrawer({
                           marginLeft: scale(isDesktop ? 6 : 12),
                         }}
                       >
-                        Gizlilik
+                        Gizlilik Politikası
+                      </CustomText>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={scale(isDesktop ? 12 : 20)}
+                      color={colors.text + "60"}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Kullanıcı Sözleşmesi */}
+                  <TouchableOpacity
+                    style={[
+                      styles.menuItem,
+                      {
+                        backgroundColor: colors.card,
+                        padding: scale(isDesktop ? 8 : 15),
+                        borderRadius: scale(isDesktop ? 6 : 12),
+                        marginBottom: scale(isDesktop ? 4 : 10),
+                      },
+                    ]}
+                    onPress={() => navigateToPage("/terms")}
+                  >
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <Ionicons
+                        name="document-text"
+                        size={scale(isDesktop ? 12 : 20)}
+                        color={colors.primary}
+                      />
+                      <CustomText
+                        style={{
+                          fontSize: scale(isDesktop ? 11 : 16),
+                          color: colors.text,
+                          marginLeft: scale(isDesktop ? 6 : 12),
+                        }}
+                      >
+                        Kullanıcı Sözleşmesi
+                      </CustomText>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={scale(isDesktop ? 12 : 20)}
+                      color={colors.text + "60"}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Aydınlatma Metni */}
+                  <TouchableOpacity
+                    style={[
+                      styles.menuItem,
+                      {
+                        backgroundColor: colors.card,
+                        padding: scale(isDesktop ? 8 : 15),
+                        borderRadius: scale(isDesktop ? 6 : 12),
+                        marginBottom: scale(isDesktop ? 4 : 10),
+                      },
+                    ]}
+                    onPress={() => navigateToPage("/kvkk")}
+                  >
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <Ionicons
+                        name="reader"
+                        size={scale(isDesktop ? 12 : 20)}
+                        color={colors.primary}
+                      />
+                      <CustomText
+                        style={{
+                          fontSize: scale(isDesktop ? 11 : 16),
+                          color: colors.text,
+                          marginLeft: scale(isDesktop ? 6 : 12),
+                        }}
+                      >
+                        Aydınlatma Metni
                       </CustomText>
                     </View>
                     <Ionicons
@@ -704,6 +804,46 @@ export default function SettingsDrawer({
                       color={colors.text + "60"}
                     />
                   </TouchableOpacity>
+
+                  {/* Hesabı Sil */}
+                  {user && (
+                    <TouchableOpacity
+                      style={[
+                        styles.menuItem,
+                        {
+                          backgroundColor: colors.card,
+                          padding: scale(isDesktop ? 8 : 15),
+                          borderRadius: scale(isDesktop ? 6 : 12),
+                          marginBottom: scale(isDesktop ? 4 : 10),
+                        },
+                      ]}
+                      onPress={() => setDeleteModalVisible(true)}
+                    >
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={scale(isDesktop ? 12 : 20)}
+                          color={colors.primary}
+                        />
+                        <CustomText
+                          style={{
+                            fontSize: scale(isDesktop ? 11 : 16),
+                            color: colors.text,
+                            marginLeft: scale(isDesktop ? 6 : 12),
+                          }}
+                        >
+                          Hesabı Sil
+                        </CustomText>
+                      </View>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={scale(isDesktop ? 12 : 20)}
+                        color={colors.text + "60"}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 {/* Çıkış Yap Butonu */}
@@ -778,6 +918,140 @@ export default function SettingsDrawer({
         </View>
       </Modal>
 
+      {/* Hesap Silme Modalı */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.modalFullOverlay}>
+          <View
+            style={[
+              styles.deleteModalContent,
+              {
+                backgroundColor: colors.card,
+                borderRadius: scale(16),
+                padding: scale(isDesktop ? 16 : 24),
+              },
+              isDesktop && { width: scale(300) },
+              !isDesktop && { width: "85%", maxWidth: 400 },
+            ]}
+          >
+            <CustomText
+              style={{
+                fontSize: scale(isDesktop ? 14 : 20),
+                fontWeight: "bold",
+                color: "#FF3B30",
+                marginBottom: scale(12),
+                textAlign: "center",
+              }}
+            >
+              Hesabı Sil
+            </CustomText>
+
+            <CustomText
+              style={{
+                fontSize: scale(isDesktop ? 11 : 14),
+                color: colors.text,
+                textAlign: "center",
+                marginBottom: scale(16),
+                lineHeight: scale(isDesktop ? 16 : 22),
+              }}
+            >
+              Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri
+              alınamaz ve tüm verileriniz kalıcı olarak silinir.
+              {"\n\n"}
+              Onaylamak için aşağıdaki alana{" "}
+              <CustomText style={{ fontWeight: "bold", color: colors.text }}>
+                Eminim
+              </CustomText>{" "}
+              yazın.
+            </CustomText>
+
+            <TextInput
+              style={[
+                styles.deleteInput,
+                {
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  fontSize: scale(isDesktop ? 12 : 16),
+                  padding: scale(isDesktop ? 8 : 12),
+                  borderRadius: scale(8),
+                  borderWidth: 1,
+                  borderColor:
+                    deleteConfirmText === "Eminim"
+                      ? "#FF3B30"
+                      : colors.text + "20",
+                  marginBottom: scale(20),
+                },
+              ]}
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder="Eminim"
+              placeholderTextColor={colors.text + "40"}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <View style={{ flexDirection: "row", gap: scale(12) }}>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  {
+                    backgroundColor: colors.text + "10",
+                    flex: 1,
+                    paddingVertical: scale(isDesktop ? 8 : 12),
+                  },
+                ]}
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setDeleteConfirmText("");
+                }}
+                disabled={isDeleting}
+              >
+                <CustomText
+                  style={{
+                    color: colors.text,
+                    textAlign: "center",
+                    fontWeight: "600",
+                    fontSize: scale(isDesktop ? 11 : 14),
+                  }}
+                >
+                  İptal
+                </CustomText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  {
+                    backgroundColor: "#FF3B30",
+                    flex: 1,
+                    paddingVertical: scale(isDesktop ? 8 : 12),
+                    opacity:
+                      deleteConfirmText === "Eminim" && !isDeleting ? 1 : 0.5,
+                  },
+                ]}
+                onPress={handleDeleteAccount}
+                disabled={deleteConfirmText !== "Eminim" || isDeleting}
+              >
+                <CustomText
+                  style={{
+                    color: "white",
+                    textAlign: "center",
+                    fontWeight: "600",
+                    fontSize: scale(isDesktop ? 11 : 14),
+                  }}
+                >
+                  {isDeleting ? "Siliniyor..." : "Hesabımı Sil"}
+                </CustomText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Profil Düzenleme Modalı */}
       <ProfileEditModal
         visible={editProfileVisible}
@@ -837,6 +1111,27 @@ const styles = StyleSheet.create({
   },
   footer: {},
   signOutButton: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalFullOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteModalContent: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  deleteInput: {
+    textAlign: "center",
+  },
+  modalButton: {
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
