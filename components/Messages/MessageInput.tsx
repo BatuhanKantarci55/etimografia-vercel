@@ -3,6 +3,7 @@ import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import { getAvatarSource } from "@utils/avatarUtils";
 import { useRef, useState } from "react";
 import {
   Image,
@@ -12,29 +13,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 interface MessageInputProps {
   onSend: (content: string, type?: string) => void;
@@ -49,7 +27,6 @@ export default function MessageInput({
 }: MessageInputProps) {
   const { profile } = useAuth();
   const { colors } = useTheme();
-  // DEĞİŞİKLİK: isDesktop eklendi
   const { scale, isDesktop } = useResponsive();
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState("");
@@ -66,10 +43,11 @@ export default function MessageInput({
     setMessage(text);
   };
 
-  const getAvatarSource = () => {
-    const avatarIndex = profile?.avatar_index || 0;
-    return allAvatars[avatarIndex % allAvatars.length];
-  };
+  // getAvatarSource artık avatarUtils'den geliyor, bu fonksiyona gerek yok
+  // const getAvatarSource = () => {
+  //   const avatarIndex = profile?.avatar_index || 0;
+  //   return allAvatars[avatarIndex % allAvatars.length];
+  // };
 
   return (
     <View>
@@ -81,7 +59,6 @@ export default function MessageInput({
             {
               backgroundColor: colors.card,
               borderTopColor: colors.text + "20",
-              // DEĞİŞİKLİK: Masaüstü padding küçültüldü
               paddingHorizontal: scale(isDesktop ? 12 : 16),
               paddingVertical: scale(isDesktop ? 6 : 8),
             },
@@ -94,7 +71,6 @@ export default function MessageInput({
             <View style={styles.replyInfo}>
               <CustomText
                 style={{
-                  // DEĞİŞİKLİK: Masaüstü font boyutu küçültüldü
                   fontSize: scale(isDesktop ? 10 : 12),
                   color: colors.primary,
                   fontWeight: "500",
@@ -132,7 +108,6 @@ export default function MessageInput({
             backgroundColor: colors.background,
             borderTopColor: colors.text + "10",
             paddingBottom: insets.bottom || scale(isDesktop ? 8 : 10),
-            // DEĞİŞİKLİK: Masaüstü padding küçültüldü
             paddingTop: scale(isDesktop ? 8 : 12),
             paddingHorizontal: scale(isDesktop ? 12 : 16),
           },
@@ -141,11 +116,10 @@ export default function MessageInput({
         <View style={styles.inputWrapper}>
           {/* Avatar */}
           <Image
-            source={getAvatarSource()}
+            source={getAvatarSource(profile?.avatar_index || 0)}
             style={[
               styles.avatar,
               {
-                // DEĞİŞİKLİK: Masaüstü avatar boyutu küçültüldü (32 -> 24)
                 width: scale(isDesktop ? 24 : 32),
                 height: scale(isDesktop ? 24 : 32),
                 borderRadius: scale(isDesktop ? 12 : 16),
@@ -162,7 +136,6 @@ export default function MessageInput({
               {
                 backgroundColor: colors.card,
                 flex: 1,
-                // DEĞİŞİKLİK: Masaüstü input kutusu iç boşlukları küçültüldü
                 paddingVertical: scale(isDesktop ? 2 : 4),
                 paddingHorizontal: scale(isDesktop ? 8 : 12),
               },
@@ -174,7 +147,6 @@ export default function MessageInput({
                 styles.input,
                 {
                   color: colors.text,
-                  // DEĞİŞİKLİK: Masaüstü font boyutu küçültüldü
                   fontSize: scale(isDesktop ? 12 : 14),
                   fontFamily: "Nunito-Regular",
                   paddingVertical: scale(isDesktop ? 6 : 8),
@@ -186,10 +158,9 @@ export default function MessageInput({
               onChangeText={handleChangeText}
               multiline={false}
               maxLength={1000}
-              // DEĞİŞİKLİK: Enter tuşuyla (web'de) anında gönderim için eklendi
               returnKeyType="send"
               onSubmitEditing={handleSend}
-              blurOnSubmit={false} // Enter sonrası klavyenin/fokusun kapanmasını engeller
+              blurOnSubmit={false}
             />
           </View>
 
@@ -201,7 +172,6 @@ export default function MessageInput({
                 backgroundColor: message.trim()
                   ? colors.primary
                   : colors.text + "20",
-                // DEĞİŞİKLİK: Masaüstü gönder butonu boyutu küçültüldü (40 -> 28)
                 width: scale(isDesktop ? 28 : 40),
                 height: scale(isDesktop ? 28 : 40),
                 borderRadius: scale(isDesktop ? 14 : 20),
@@ -213,7 +183,6 @@ export default function MessageInput({
           >
             <Ionicons
               name="send"
-              // DEĞİŞİKLİK: Uçak ikonu boyutu küçültüldü
               size={scale(isDesktop ? 12 : 20)}
               color={message.trim() ? "white" : colors.text + "60"}
             />

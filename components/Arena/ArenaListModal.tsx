@@ -7,16 +7,15 @@ import { useResponsive } from "@hooks/useResponsive";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    Image,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CONTENT_WIDTH = SCREEN_WIDTH - 40;
 
 interface ArenaListModalProps {
   visible: boolean;
@@ -33,7 +32,7 @@ export default function ArenaListModal({
 }: ArenaListModalProps) {
   const { colors, themeMode } = useTheme();
   const { scale } = useResponsive();
-  const { arenas, chestProgress, userProgress } = useArena();
+  const { arenas, userProgress } = useArena();
 
   const [selectedIndex, setSelectedIndex] = useState(currentArenaId - 1);
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -99,38 +98,6 @@ export default function ArenaListModal({
     const arena = arenas.find((a) => a.arena_number === arenaNumber);
     if (!arena) return false;
     return userProgress.highest_trophies >= arena.min_trophies;
-  };
-
-  const getChestStatus = (arenaNumber: number, segmentIndex: number) => {
-    const arena = arenas.find((a) => a.arena_number === arenaNumber);
-    if (!arena) return "locked";
-
-    const chest = chestProgress.find(
-      (c) => c.arena_id === arena.id && c.segment_index === segmentIndex,
-    );
-    return chest?.status || "locked";
-  };
-
-  const getChestIcon = (status: string) => {
-    switch (status) {
-      case "available":
-        return "gift";
-      case "opened":
-        return "checkmark-circle";
-      default:
-        return "lock-closed";
-    }
-  };
-
-  const getChestColor = (status: string) => {
-    switch (status) {
-      case "available":
-        return "#FFD700";
-      case "opened":
-        return "#4CAF50";
-      default:
-        return colors.text + "40";
-    }
   };
 
   const handlePrev = () => {
@@ -269,47 +236,6 @@ export default function ArenaListModal({
             {currentArena?.min_trophies} - {currentArena?.max_trophies || "∞"}{" "}
             Kupa
           </CustomText>
-
-          {/* 4 Sandık */}
-          <View style={styles.chestsContainer}>
-            {[0, 1, 2, 3].map((segmentIndex) => {
-              const status = getChestStatus(
-                currentArena?.arena_number || 1,
-                segmentIndex,
-              );
-              const icon = getChestIcon(status);
-              const color = getChestColor(status);
-
-              return (
-                <View key={segmentIndex} style={styles.chestItem}>
-                  <View
-                    style={[
-                      styles.chestIconContainer,
-                      { backgroundColor: color + "20" },
-                    ]}
-                  >
-                    <Ionicons
-                      name={icon as any}
-                      size={scale(32)}
-                      color={color}
-                    />
-                  </View>
-                  <CustomText
-                    style={[
-                      styles.chestStatusText,
-                      { color: color, fontSize: scale(11) },
-                    ]}
-                  >
-                    {status === "available"
-                      ? "Açılabilir"
-                      : status === "opened"
-                        ? "Açıldı"
-                        : "Kilitli"}
-                  </CustomText>
-                </View>
-              );
-            })}
-          </View>
         </View>
       </View>
     </BottomSheetModal>
@@ -406,26 +332,5 @@ const styles = StyleSheet.create({
   },
   arenaTrophies: {
     fontSize: 14,
-    marginBottom: 16,
-  },
-  chestsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    marginTop: 16,
-  },
-  chestItem: {
-    alignItems: "center",
-  },
-  chestIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  chestStatusText: {
-    fontWeight: "500",
   },
 });

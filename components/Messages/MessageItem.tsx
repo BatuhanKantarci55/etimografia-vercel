@@ -5,6 +5,7 @@ import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import { getAvatarSource } from "@utils/avatarUtils";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -19,29 +20,6 @@ import {
   View,
 } from "react-native";
 import { PanGestureHandler, State } from "react-native-gesture-handler";
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 // Basit ImageViewer component
 const SimpleImageViewer = ({
@@ -103,7 +81,6 @@ export default function MessageItem({
 }: MessageItemProps) {
   const { user } = useAuth();
   const { colors } = useTheme();
-  // DEĞİŞİKLİK: isDesktop eklendi
   const { scale, isDesktop } = useResponsive();
   const [menuVisible, setMenuVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -133,9 +110,10 @@ export default function MessageItem({
     }
   }, [isHighlighted]);
 
-  const getAvatarSource = (avatarIndex: number) => {
-    return allAvatars[avatarIndex % allAvatars.length];
-  };
+  // getAvatarSource artık avatarUtils'den geliyor, bu fonksiyona gerek yok
+  // const getAvatarSource = (avatarIndex: number) => {
+  //   return allAvatars[avatarIndex % allAvatars.length];
+  // };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -271,7 +249,6 @@ export default function MessageItem({
             <Image
               source={{ uri: message.reply_to.content }}
               style={{
-                // DEĞİŞİKLİK: Masaüstü yanıt alınan resim önizlemesi daha da küçültüldü (18 -> 14)
                 width: scale(isDesktop ? 14 : 40),
                 height: scale(isDesktop ? 14 : 40),
                 borderRadius: scale(isDesktop ? 2 : 6),
@@ -281,7 +258,6 @@ export default function MessageItem({
             />
             <CustomText
               style={{
-                // DEĞİŞİKLİK: Masaüstü yazı boyutu küçültüldü (9 -> 8)
                 fontSize: scale(isDesktop ? 8 : 12),
                 color: isOwnMessage ? "white" : colors.text,
                 opacity: 0.8,
@@ -298,7 +274,6 @@ export default function MessageItem({
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <View
               style={{
-                // DEĞİŞİKLİK: Masaüstü gönderi kutucuğu boyutu küçültüldü
                 width: scale(isDesktop ? 14 : 40),
                 height: scale(isDesktop ? 14 : 40),
                 borderRadius: scale(isDesktop ? 2 : 6),
@@ -332,7 +307,6 @@ export default function MessageItem({
         return (
           <CustomText
             style={{
-              // DEĞİŞİKLİK: Masaüstü yanıt metni boyutu küçültüldü (9 -> 8)
               fontSize: scale(isDesktop ? 8 : 12),
               color: isOwnMessage ? "white" : colors.text,
               opacity: 0.8,
@@ -356,7 +330,6 @@ export default function MessageItem({
                 : colors.text + "20",
               borderLeftWidth: 3,
               borderLeftColor: isOwnMessage ? "white" : colors.primary,
-              // DEĞİŞİKLİK: Yanıt baloncuğu kavis ve boşlukları daha da daraltıldı
               borderRadius: scale(isDesktop ? 3 : 6),
               padding: scale(isDesktop ? 2 : 6),
               marginBottom: scale(isDesktop ? 2 : 6),
@@ -365,7 +338,6 @@ export default function MessageItem({
         >
           <CustomText
             style={{
-              // DEĞİŞİKLİK: Yanıt kullanıcı adı boyutu (8 -> 7)
               fontSize: scale(isDesktop ? 7 : 11),
               color: isOwnMessage ? "white" : colors.primary,
               fontWeight: "500",
@@ -398,7 +370,6 @@ export default function MessageItem({
                   width: "100%",
                   height: undefined,
                   aspectRatio: 1,
-                  // DEĞİŞİKLİK: Görselin kavisleri de bir miktar küçültüldü
                   borderRadius: scale(isDesktop ? 4 : 8),
                 },
               ]}
@@ -407,7 +378,6 @@ export default function MessageItem({
             {message.metadata?.caption && (
               <CustomText
                 style={{
-                  // DEĞİŞİKLİK: Görsel altı açıklama boyutu küçültüldü (9 -> 8)
                   fontSize: scale(isDesktop ? 8 : 12),
                   color: isOwnMessage ? "white" : colors.text + "80",
                   marginTop: scale(isDesktop ? 2 : 4),
@@ -429,7 +399,6 @@ export default function MessageItem({
             style={[
               styles.stickerMessage,
               {
-                // DEĞİŞİKLİK: Masaüstünde sticker boyutu küçültüldü (60 -> 50)
                 width: scale(isDesktop ? 50 : 120),
                 height: scale(isDesktop ? 50 : 120),
               },
@@ -442,10 +411,9 @@ export default function MessageItem({
         return (
           <CustomText
             style={{
-              // DEĞİŞİKLİK: Masaüstü ana mesaj metin boyutu daha da küçültüldü (11 -> 10)
               fontSize: scale(isDesktop ? 10 : 14),
               color: isOwnMessage ? "white" : colors.text,
-              lineHeight: scale(isDesktop ? 12 : 20), // 14 -> 12
+              lineHeight: scale(isDesktop ? 12 : 20),
             }}
           >
             {message.content}
@@ -481,7 +449,7 @@ export default function MessageItem({
             borderRadius: scale(12),
             padding: scale(isDesktop ? 2 : 8),
           },
-          isDesktop && { width: scale(120), maxWidth: scale(140) }, // DEĞİŞİKLİK: Menü genişliği daha da daraltıldı
+          isDesktop && { width: scale(120), maxWidth: scale(140) },
         ]}
       >
         {/* Cevapla */}
@@ -489,7 +457,6 @@ export default function MessageItem({
           style={[
             styles.menuItem,
             {
-              // DEĞİŞİKLİK: Menü öğesi padding'i küçültüldü (4 -> 3)
               padding: scale(isDesktop ? 3 : 16),
               borderRadius: scale(8),
             },
@@ -498,16 +465,16 @@ export default function MessageItem({
         >
           <Ionicons
             name="arrow-undo"
-            size={scale(isDesktop ? 10 : 20)} // 14 -> 10
+            size={scale(isDesktop ? 10 : 20)}
             color={colors.primary}
           />
           <CustomText
             style={[
               styles.menuText,
               {
-                fontSize: scale(isDesktop ? 10 : 16), // 12 -> 10
+                fontSize: scale(isDesktop ? 10 : 16),
                 color: colors.text,
-                marginLeft: scale(isDesktop ? 4 : 12), // 8 -> 4
+                marginLeft: scale(isDesktop ? 4 : 12),
               },
             ]}
           >
@@ -680,12 +647,12 @@ export default function MessageItem({
             borderRadius: scale(16),
             padding: scale(isDesktop ? 6 : 20),
           },
-          isDesktop && { width: scale(180) }, // 200 -> 180
+          isDesktop && { width: scale(180) },
         ]}
       >
         <CustomText
           style={{
-            fontSize: scale(isDesktop ? 10 : 18), // 11 -> 10
+            fontSize: scale(isDesktop ? 10 : 18),
             color: colors.text,
             fontWeight: "600",
             marginBottom: scale(isDesktop ? 4 : 16),
@@ -700,7 +667,7 @@ export default function MessageItem({
             {
               backgroundColor: colors.background,
               color: colors.text,
-              fontSize: scale(isDesktop ? 9 : 14), // 10 -> 9
+              fontSize: scale(isDesktop ? 9 : 14),
               padding: scale(isDesktop ? 4 : 12),
               borderRadius: scale(8),
               marginBottom: scale(isDesktop ? 4 : 16),
@@ -730,7 +697,7 @@ export default function MessageItem({
           >
             <CustomText
               style={{
-                fontSize: scale(isDesktop ? 9 : 16), // 10 -> 9
+                fontSize: scale(isDesktop ? 9 : 16),
                 color: colors.text,
                 textAlign: "center",
               }}
@@ -800,7 +767,6 @@ export default function MessageItem({
                   style={[
                     styles.avatar,
                     {
-                      // DEĞİŞİKLİK: Masaüstü için sohbet penceresi gönderen kişi avatarı daha da küçültüldü (18 -> 14)
                       width: scale(isDesktop ? 14 : 28),
                       height: scale(isDesktop ? 14 : 28),
                       borderRadius: scale(isDesktop ? 7 : 14),
@@ -828,7 +794,6 @@ export default function MessageItem({
                       backgroundColor: isOwnMessage
                         ? colors.primary
                         : colors.card,
-                      // DEĞİŞİKLİK: Masaüstü mesaj balonu kavisleri ve iç boşluğu daha da daraltıldı (6 -> 4, 4 -> 3)
                       borderRadius: scale(isDesktop ? 4 : 12),
                       padding: scale(isDesktop ? 3 : 8),
                     },
@@ -843,7 +808,6 @@ export default function MessageItem({
                   {message.is_edited && (
                     <CustomText
                       style={{
-                        // DEĞİŞİKLİK: Düzenlendi yazısı küçültüldü (7 -> 6)
                         fontSize: scale(isDesktop ? 6 : 10),
                         color: isOwnMessage ? "white" : colors.text + "60",
                         marginTop: scale(isDesktop ? 1 : 4),
@@ -859,7 +823,6 @@ export default function MessageItem({
                     style={[
                       styles.timeText,
                       {
-                        // DEĞİŞİKLİK: Zaman fontu küçültüldü (7 -> 6)
                         fontSize: scale(isDesktop ? 6 : 10),
                         color: isOwnMessage ? "white" : colors.text + "60",
                         marginTop: scale(isDesktop ? 1 : 4),

@@ -1,8 +1,15 @@
 import AuthRequiredModal from "@components/AuthRequiredModal";
 import BottomSheetModal from "@components/BottomSheetModal";
+import CustomText from "@components/CustomText";
 import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import {
+  freeAvatars,
+  getAvatarSource,
+  premiumAvatars,
+} from "@utils/avatarUtils";
 import { useState } from "react";
 import {
   Animated,
@@ -17,29 +24,6 @@ import {
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AVATAR_SIZE = SCREEN_WIDTH / 4 - 24;
 
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
-
 interface AvatarSectionProps {
   scrollY: Animated.Value;
   avatarScale: Animated.AnimatedInterpolation<number>;
@@ -48,6 +32,7 @@ interface AvatarSectionProps {
   selectedAvatarIndex: number;
   onAvatarChange: (index: number) => void;
   isOwnProfile?: boolean;
+  purchasedAvatars?: Set<number>;
 }
 
 export default function AvatarSection({
@@ -58,6 +43,7 @@ export default function AvatarSection({
   selectedAvatarIndex,
   onAvatarChange,
   isOwnProfile = true,
+  purchasedAvatars = new Set(),
 }: AvatarSectionProps) {
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -65,13 +51,39 @@ export default function AvatarSection({
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [authModalVisible, setAuthModalVisible] = useState(false);
 
-  const currentAvatar = allAvatars[selectedAvatarIndex];
-
+  const currentAvatar = getAvatarSource(selectedAvatarIndex);
   const mainAvatarSize = scale(isDesktop ? 80 : 100);
   const mainAvatarRadius = mainAvatarSize / 2;
 
   const columns = isDesktop ? 5 : 4;
   const currentAvatarItemSize = isDesktop ? scale(55) : AVATAR_SIZE;
+
+  // Sadece kullanıcının sahip olduğu avatarları göster
+  const getOwnedAvatars = () => {
+    const ownedList: any[] = [];
+
+    // Ücretsiz avatarlar (herkese açık)
+    freeAvatars.forEach((avatar, index) => {
+      ownedList.push({ image: avatar, index, isPremium: false, owned: true });
+    });
+
+    // Ücretli avatarlar (sadece satın alınanlar)
+    premiumAvatars.forEach((avatar) => {
+      const isOwned = purchasedAvatars.has(avatar.index);
+      ownedList.push({
+        image: avatar.image,
+        index: avatar.index,
+        isPremium: true,
+        owned: isOwned,
+        name: avatar.name,
+      });
+    });
+
+    // Sadece sahip olunanları filtrele
+    return ownedList.filter((item) => item.owned);
+  };
+
+  const ownedAvatars = getOwnedAvatars();
 
   const handlePress = () => {
     if (!isOwnProfile) return;
@@ -82,39 +94,67 @@ export default function AvatarSection({
     setShowAvatarSelector(true);
   };
 
-  const renderAvatarItem = ({ item, index }: { item: any; index: number }) => (
-    <TouchableOpacity
-      style={[
-        styles.avatarItem,
-        {
-          width: currentAvatarItemSize,
-          height: currentAvatarItemSize,
-          marginHorizontal: isDesktop ? scale(6) : 0,
-        },
-      ]}
-      activeOpacity={0.7}
-      onPress={() => {
-        onAvatarChange(index);
-        setShowAvatarSelector(false);
-      }}
-    >
-      <Image
-        source={item}
+  const renderAvatarItem = ({ item }: { item: any }) => {
+    const isPremium = item.isPremium;
+    const isSelected = selectedAvatarIndex === item.index;
+    const isGoldBorder = isPremium; // Premium avatarlar altın kenarlıklı
+
+    return (
+      <TouchableOpacity
         style={[
-          styles.avatarImage,
+          styles.avatarItem,
           {
             width: currentAvatarItemSize,
             height: currentAvatarItemSize,
-            borderRadius: currentAvatarItemSize / 2,
-            borderWidth: selectedAvatarIndex === index ? 3 : 0,
-            borderColor:
-              selectedAvatarIndex === index ? colors.primary : "transparent",
+            marginHorizontal: isDesktop ? scale(6) : 0,
           },
         ]}
-        resizeMode="cover"
-      />
-    </TouchableOpacity>
-  );
+        activeOpacity={0.7}
+        onPress={() => {
+          onAvatarChange(item.index);
+          setShowAvatarSelector(false);
+        }}
+      >
+        <View
+          style={[
+            styles.avatarBorder,
+            {
+              width: currentAvatarItemSize,
+              height: currentAvatarItemSize,
+              borderRadius: currentAvatarItemSize / 2,
+              borderWidth: isGoldBorder ? 2 : 0,
+              borderColor: isGoldBorder ? "#FFD700" : "transparent",
+            },
+          ]}
+        >
+          <Image
+            source={item.image}
+            style={[
+              styles.avatarImage,
+              {
+                width: currentAvatarItemSize,
+                height: currentAvatarItemSize,
+                borderRadius: currentAvatarItemSize / 2,
+                borderWidth: isSelected ? 3 : 0,
+                borderColor: isSelected ? colors.primary : "transparent",
+              },
+            ]}
+            resizeMode="cover"
+          />
+        </View>
+        {isPremium && (
+          <View
+            style={[
+              styles.premiumBadge,
+              { backgroundColor: "rgba(0,0,0,0.6)" },
+            ]}
+          >
+            <Ionicons name="star" size={scale(12)} color="#FFD700" />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={{ position: "relative", zIndex: 100, elevation: 100 }}>
@@ -128,7 +168,7 @@ export default function AvatarSection({
             ],
             opacity: avatarOpacity,
             top: -mainAvatarRadius,
-            zIndex: 100, // Çakışmaları garantiye almak için eklendi
+            zIndex: 100,
             elevation: 100,
           },
         ]}
@@ -177,13 +217,22 @@ export default function AvatarSection({
         >
           <FlatList
             key={isDesktop ? "desktop-5" : "mobile-4"}
-            data={allAvatars}
+            data={ownedAvatars}
             renderItem={renderAvatarItem}
-            keyExtractor={(_, index) => index.toString()}
+            keyExtractor={(item) => item.index.toString()}
             numColumns={columns}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.avatarGrid}
             columnWrapperStyle={styles.columnWrapper}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <CustomText
+                  style={{ color: colors.text + "80", textAlign: "center" }}
+                >
+                  Henüz satın alınmış avatar yok.
+                </CustomText>
+              </View>
+            }
           />
         </BottomSheetModal>
       )}
@@ -224,6 +273,24 @@ const styles = StyleSheet.create({
   avatarItem: {
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
+  },
+  avatarBorder: {
+    overflow: "hidden",
   },
   avatarImage: {},
+  premiumBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
 });

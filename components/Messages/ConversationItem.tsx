@@ -1,32 +1,10 @@
 import CustomText from "@components/CustomText";
 import { useTheme } from "@contexts/ThemeContext";
 import { useResponsive } from "@hooks/useResponsive";
+import { getAvatarSource } from "@utils/avatarUtils";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 interface ConversationItemProps {
   conversation: any;
@@ -40,7 +18,6 @@ export default function ConversationItem({
   isSelected = false,
 }: ConversationItemProps) {
   const { colors } = useTheme();
-  // DEĞİŞİKLİK: isDesktop eklendi
   const { scale, isDesktop } = useResponsive();
 
   const otherUser = conversation.other_user;
@@ -66,9 +43,10 @@ export default function ConversationItem({
   const lastMessageAt = conversation.last_message_at;
   const unreadCount = conversation.unread_count || 0;
 
-  const getAvatarSource = (avatarIndex: number) => {
-    return allAvatars[avatarIndex % allAvatars.length];
-  };
+  // getAvatarSource artık avatarUtils'den geliyor, bu fonksiyona gerek yok
+  // const getAvatarSource = (avatarIndex: number) => {
+  //   return allAvatars[avatarIndex % allAvatars.length];
+  // };
 
   const formatTime = (dateString: string) => {
     try {
@@ -88,7 +66,6 @@ export default function ConversationItem({
         styles.container,
         {
           backgroundColor: isSelected ? colors.primary + "15" : colors.card,
-          // DEĞİŞİKLİK: Masaüstünde aralıklar ve iç boşluklar daha da daraltıldı
           marginBottom: scale(isDesktop ? 2 : 8),
           borderRadius: scale(isDesktop ? 6 : 12),
           padding: scale(isDesktop ? 6 : 12),
@@ -105,7 +82,6 @@ export default function ConversationItem({
           style={[
             styles.avatar,
             {
-              // DEĞİŞİKLİK: Masaüstünde profil avatarı boyutu daha da daraltıldı (40 -> 32)
               width: scale(isDesktop ? 32 : 56),
               height: scale(isDesktop ? 32 : 56),
               borderRadius: scale(isDesktop ? 16 : 28),
@@ -125,7 +101,6 @@ export default function ConversationItem({
           <View style={styles.header}>
             <CustomText
               style={{
-                // DEĞİŞİKLİK: Masaüstünde kullanıcı adı boyutu daha da daraltıldı (14 -> 12)
                 fontSize: scale(isDesktop ? 12 : 16),
                 fontWeight: "600",
                 color: colors.text,
@@ -138,7 +113,6 @@ export default function ConversationItem({
             {lastMessageAt && (
               <CustomText
                 style={{
-                  // DEĞİŞİKLİK: Masaüstünde zaman boyutu daha da daraltıldı (10 -> 9)
                   fontSize: scale(isDesktop ? 9 : 12),
                   color: colors.text + "60",
                   marginLeft: scale(4),
@@ -152,7 +126,6 @@ export default function ConversationItem({
           <View style={styles.footer}>
             <CustomText
               style={{
-                // DEĞİŞİKLİK: Masaüstünde son mesaj boyutu daha da daraltıldı (12 -> 11)
                 fontSize: scale(isDesktop ? 11 : 13),
                 color: colors.text + "80",
                 flex: 1,
@@ -168,7 +141,6 @@ export default function ConversationItem({
                   styles.badge,
                   {
                     backgroundColor: colors.primary,
-                    // DEĞİŞİKLİK: Masaüstünde okunmamış mesaj rozeti daha da daraltıldı (16 -> 14)
                     minWidth: scale(isDesktop ? 14 : 20),
                     height: scale(isDesktop ? 14 : 20),
                     borderRadius: scale(isDesktop ? 7 : 10),
@@ -178,7 +150,6 @@ export default function ConversationItem({
               >
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Masaüstü badge yazı boyutu
                     fontSize: scale(isDesktop ? 8 : 11),
                     color: "white",
                     fontWeight: "600",

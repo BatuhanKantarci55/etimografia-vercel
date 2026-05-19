@@ -7,6 +7,7 @@ import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
 import { supabase } from "@lib/supabase";
+import { getBannerSource } from "@utils/bannerUtils";
 import UserAvatarSection from "components/Profile/UserAvatarSection";
 import UserBannerSection from "components/Profile/UserBannerSection";
 import UserProfileHeader from "components/Profile/UserProfileHeader";
@@ -23,30 +24,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-// Banner görsellerini import et
-const allBanners = [
-  require("../../assets/images/banners/stars.png"),
-  require("../../assets/images/banners/medusa.png"),
-  require("../../assets/images/banners/pegasus.png"),
-  require("../../assets/images/banners/roses.png"),
-  require("../../assets/images/banners/red_castle.png"),
-  require("../../assets/images/banners/desert.png"),
-  require("../../assets/images/banners/eagle.png"),
-  require("../../assets/images/banners/fairy.png"),
-  require("../../assets/images/banners/fall.png"),
-  require("../../assets/images/banners/flowers.png"),
-  require("../../assets/images/banners/forest.png"),
-  require("../../assets/images/banners/leaves.png"),
-  require("../../assets/images/banners/mountains.png"),
-  require("../../assets/images/banners/ocean.png"),
-  require("../../assets/images/banners/orchid.png"),
-  require("../../assets/images/banners/peacock.png"),
-  require("../../assets/images/banners/phoenix.png"),
-  require("../../assets/images/banners/space.png"),
-  require("../../assets/images/banners/tree.png"),
-  require("../../assets/images/banners/wolf.png"),
-];
 
 type UserProfile = {
   id: string;
@@ -259,7 +236,7 @@ export default function UserProfileScreen() {
     );
   }
 
-  const currentBanner = allBanners[profile.banner_index || 0];
+  const currentBanner = getBannerSource(profile.banner_index || 0);
 
   const screenContent = (
     <>

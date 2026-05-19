@@ -9,6 +9,7 @@ import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
 import { supabase } from "@lib/supabase";
+import { getAvatarSource } from "@utils/avatarUtils";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -20,29 +21,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 // Profil bilgilerini getir (manuel join)
 const fetchProfileById = async (userId: string): Promise<any> => {
@@ -353,9 +331,10 @@ export default function UserProfileContent({
     }
   };
 
-  const getAvatarSource = (avatarIndex: number) => {
-    return allAvatars[avatarIndex % allAvatars.length];
-  };
+  // getAvatarSource artık avatarUtils'den geliyor, bu fonksiyona gerek yok
+  // const getAvatarSource = (avatarIndex: number) => {
+  //   return allAvatars[avatarIndex % allAvatars.length];
+  // };
 
   const renderPosts = () => (
     <FlatList

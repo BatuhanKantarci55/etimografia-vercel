@@ -8,12 +8,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ArenaProvider } from "../contexts/ArenaContext";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { CommentProvider } from "../contexts/CommentContext";
+import { CurrencyProvider } from "../contexts/CurrencyContext";
 import { DailyStreakProvider } from "../contexts/DailyStreakContext";
+import { DiamondRewardProvider } from "../contexts/DiamondRewardContext";
 import { DuelProvider } from "../contexts/DuelContext";
 import { EducationProvider } from "../contexts/EducationContext";
 import { FollowProvider } from "../contexts/FollowContext";
 import { FontProvider, useFonts } from "../contexts/FontContext";
 import { GameModeProvider } from "../contexts/GameModeContext";
+import { GoldRewardProvider } from "../contexts/GoldRewardContext";
 import { HeroProvider } from "../contexts/HeroContext";
 import { LevelProvider } from "../contexts/LevelContext";
 import { MessageProvider } from "../contexts/MessageContext";
@@ -83,7 +86,15 @@ function Providers({ children }: { children: React.ReactNode }) {
                         <DuelProvider>
                           <EducationProvider>
                             <ArenaProvider>
-                              <HeroProvider>{children}</HeroProvider>
+                              <HeroProvider>
+                                <CurrencyProvider>
+                                  <GoldRewardProvider>
+                                    <DiamondRewardProvider>
+                                      {children}
+                                    </DiamondRewardProvider>
+                                  </GoldRewardProvider>
+                                </CurrencyProvider>
+                              </HeroProvider>
                             </ArenaProvider>
                           </EducationProvider>
                         </DuelProvider>

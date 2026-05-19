@@ -5,6 +5,12 @@ import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import {
+  allBannerNames,
+  freeBanners,
+  getBannerSource,
+  premiumBanners
+} from "@utils/bannerUtils";
 import { useState } from "react";
 import {
   Animated,
@@ -18,58 +24,13 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const allBanners = [
-  require("../../assets/images/banners/stars.png"),
-  require("../../assets/images/banners/medusa.png"),
-  require("../../assets/images/banners/pegasus.png"),
-  require("../../assets/images/banners/roses.png"),
-  require("../../assets/images/banners/red_castle.png"),
-  require("../../assets/images/banners/desert.png"),
-  require("../../assets/images/banners/eagle.png"),
-  require("../../assets/images/banners/fairy.png"),
-  require("../../assets/images/banners/fall.png"),
-  require("../../assets/images/banners/flowers.png"),
-  require("../../assets/images/banners/forest.png"),
-  require("../../assets/images/banners/leaves.png"),
-  require("../../assets/images/banners/mountains.png"),
-  require("../../assets/images/banners/ocean.png"),
-  require("../../assets/images/banners/orchid.png"),
-  require("../../assets/images/banners/peacock.png"),
-  require("../../assets/images/banners/phoenix.png"),
-  require("../../assets/images/banners/space.png"),
-  require("../../assets/images/banners/tree.png"),
-  require("../../assets/images/banners/wolf.png"),
-];
-
-const bannerNames = [
-  "Yıldızlar",
-  "Medusa",
-  "Pegasus",
-  "Güller",
-  "Kırmızı Kale",
-  "Çöl",
-  "Çift Başlı Kartal",
-  "Mistik Orman",
-  "Ağaçlık",
-  "Son Kasımpatı",
-  "Bahar Ormanı",
-  "Dal Girdabı",
-  "Yüce Dağlar",
-  "Okyanus",
-  "Orkide Demeti",
-  "Tavus Kuşu Ormanı",
-  "Zümrüdüanka",
-  "Uzay Manzarası",
-  "Yaprak Yığını",
-  "Kurt Kanat",
-];
-
 interface BannerSectionProps {
   scrollY: Animated.Value;
   bannerOpacity: Animated.AnimatedInterpolation<number>;
   selectedBannerIndex: number;
   onBannerChange: (index: number) => void;
   isOwnProfile?: boolean;
+  purchasedBanners?: Set<number>;
 }
 
 export default function BannerSection({
@@ -78,6 +39,7 @@ export default function BannerSection({
   selectedBannerIndex,
   onBannerChange,
   isOwnProfile = true,
+  purchasedBanners = new Set(),
 }: BannerSectionProps) {
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -85,7 +47,42 @@ export default function BannerSection({
   const [showBannerSelector, setShowBannerSelector] = useState(false);
   const [authModalVisible, setAuthModalVisible] = useState(false);
 
-  const currentBanner = allBanners[selectedBannerIndex];
+  const currentBanner = getBannerSource(selectedBannerIndex);
+
+  // Sadece kullanıcının sahip olduğu banner'ları göster
+  const getOwnedBanners = () => {
+    const ownedList: any[] = [];
+
+    // Ücretsiz banner'lar (herkese açık)
+    freeBanners.forEach((banner, index) => {
+      ownedList.push({
+        image: banner,
+        index,
+        isPremium: false,
+        owned: true,
+        name: allBannerNames[index],
+      });
+    });
+
+    // Ücretli banner'lar (sadece satın alınanlar)
+    premiumBanners.forEach((banner) => {
+      const isOwned = purchasedBanners.has(banner.index);
+      ownedList.push({
+        image: banner.image,
+        index: banner.index,
+        isPremium: true,
+        owned: isOwned,
+        name: banner.name,
+        price: banner.price,
+        currency: banner.currency,
+      });
+    });
+
+    // Sadece sahip olunanları filtrele
+    return ownedList.filter((item) => item.owned);
+  };
+
+  const ownedBanners = getOwnedBanners();
 
   const handlePress = () => {
     if (!isOwnProfile) return;
@@ -162,66 +159,98 @@ export default function BannerSection({
               },
             ]}
           >
-            {allBanners.map((banner, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.bannerOption,
-                  {
-                    backgroundColor: colors.card,
-                    marginBottom: scale(15),
-                    borderRadius: scale(12),
-                    overflow: "hidden",
-                  },
-                  isDesktop && { width: "48%" },
-                ]}
-                activeOpacity={0.7}
-                onPress={() => handleBannerSelect(index)}
-              >
-                <Image
-                  source={banner}
-                  style={[
-                    styles.bannerOptionImage,
-                    {
-                      width: "100%",
-                      height: isDesktop ? scale(80) : SCREEN_WIDTH * 0.25,
-                    },
-                  ]}
-                  resizeMode="cover"
-                />
-                <View
-                  style={[
-                    styles.bannerOptionOverlay,
-                    { backgroundColor: colors.card + "CC" },
-                  ]}
+            {ownedBanners.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <CustomText
+                  style={{ color: colors.text + "80", textAlign: "center" }}
                 >
-                  <CustomText
-                    style={{
-                      color: colors.text,
-                      fontSize: scale(isDesktop ? 10 : 14),
-                      fontWeight: "500",
-                    }}
-                    numberOfLines={1}
+                  Henüz satın alınmış banner yok.
+                </CustomText>
+              </View>
+            ) : (
+              ownedBanners.map((item) => {
+                const isPremium = item.isPremium;
+                const isSelected = selectedBannerIndex === item.index;
+
+                return (
+                  <TouchableOpacity
+                    key={item.index}
+                    style={[
+                      styles.bannerOption,
+                      {
+                        backgroundColor: colors.card,
+                        marginBottom: scale(15),
+                        borderRadius: scale(12),
+                        overflow: "hidden",
+                        borderWidth: isPremium ? 2 : 0,
+                        borderColor: isPremium ? "#FFD700" : "transparent",
+                      },
+                      isDesktop && { width: "48%" },
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => handleBannerSelect(item.index)}
                   >
-                    {bannerNames[index]}
-                  </CustomText>
-                  {selectedBannerIndex === index && (
+                    <Image
+                      source={item.image}
+                      style={[
+                        styles.bannerOptionImage,
+                        {
+                          width: "100%",
+                          height: isDesktop ? scale(80) : SCREEN_WIDTH * 0.25,
+                        },
+                      ]}
+                      resizeMode="cover"
+                    />
                     <View
                       style={[
-                        styles.selectedBadge,
-                        { backgroundColor: colors.primary },
+                        styles.bannerOptionOverlay,
+                        { backgroundColor: colors.card + "CC" },
                       ]}
                     >
-                      <Ionicons
-                        name="checkmark"
-                        size={scale(16)}
-                        color="white"
-                      />
+                      <CustomText
+                        style={{
+                          color: colors.text,
+                          fontSize: scale(isDesktop ? 10 : 14),
+                          fontWeight: "500",
+                        }}
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                      </CustomText>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        {isPremium && (
+                          <Ionicons
+                            name="star"
+                            size={scale(14)}
+                            color="#FFD700"
+                          />
+                        )}
+                        {isSelected && (
+                          <View
+                            style={[
+                              styles.selectedBadge,
+                              { backgroundColor: colors.primary },
+                            ]}
+                          >
+                            <Ionicons
+                              name="checkmark"
+                              size={scale(16)}
+                              color="white"
+                            />
+                          </View>
+                        )}
+                      </View>
                     </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </ScrollView>
         </BottomSheetModal>
       )}
@@ -257,6 +286,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    position: "relative",
   },
   bannerOptionImage: {
     width: "100%",
@@ -273,6 +303,10 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyContainer: {
+    paddingVertical: 40,
     alignItems: "center",
   },
 });

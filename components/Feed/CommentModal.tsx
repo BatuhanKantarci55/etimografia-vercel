@@ -6,6 +6,7 @@ import { usePosts } from "@contexts/PostContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import { getAvatarSource } from "@utils/avatarUtils";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,29 +25,6 @@ import {
 } from "react-native";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 interface CommentModalProps {
   visible: boolean;
@@ -281,9 +259,10 @@ export default function CommentModal({
     setReplyingToParentId(null);
   };
 
-  const getAvatarSource = (avatarIndex: number) => {
-    return allAvatars[avatarIndex % allAvatars.length];
-  };
+  // getAvatarSource artık avatarUtils'den geliyor, bu fonksiyona gerek yok
+  // const getAvatarSource = (avatarIndex: number) => {
+  //   return allAvatars[avatarIndex % allAvatars.length];
+  // };
 
   const formatTime = (dateString: string) => {
     try {
@@ -317,7 +296,6 @@ export default function CommentModal({
           <CustomText
             fontFamily="regular"
             style={{
-              // DEĞİŞİKLİK: Masaüstünde yorum metni boyutu daha da küçültüldü (11 -> 10)
               fontSize: scale(isDesktop ? 10 : 14),
               color: colors.primary,
             }}
@@ -341,7 +319,6 @@ export default function CommentModal({
       <CustomText
         fontFamily="regular"
         style={{
-          // DEĞİŞİKLİK: Masaüstünde yorum metni boyutu daha da küçültüldü (11 -> 10)
           fontSize: scale(isDesktop ? 10 : 14),
           color: colors.text,
         }}
@@ -375,7 +352,6 @@ export default function CommentModal({
               style={[
                 styles.avatarImage,
                 {
-                  // DEĞİŞİKLİK: Masaüstünde yorum avatarı boyutu küçültüldü (24 -> 20)
                   width: scale(isDesktop ? 20 : 40),
                   height: scale(isDesktop ? 20 : 40),
                   borderRadius: scale(isDesktop ? 10 : 20),
@@ -391,7 +367,6 @@ export default function CommentModal({
               <View style={styles.commentHeader}>
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Masaüstünde kullanıcı adı boyutu küçültüldü (11 -> 10)
                     fontSize: scale(isDesktop ? 10 : 14),
                     fontWeight: "600",
                     color: colors.text,
@@ -401,7 +376,6 @@ export default function CommentModal({
                 </CustomText>
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Masaüstünde zaman bilgisi küçültüldü (8 -> 7)
                     fontSize: scale(isDesktop ? 7 : 11),
                     color: colors.text + "60",
                     marginLeft: scale(8),
@@ -418,7 +392,6 @@ export default function CommentModal({
               <TouchableOpacity onPress={() => handleReplyPress(item)}>
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Masaüstünde Yanıtla butonu küçültüldü (9 -> 8)
                     fontSize: scale(isDesktop ? 8 : 12),
                     color: colors.primary,
                     marginTop: scale(isDesktop ? 1 : 4),
@@ -438,7 +411,6 @@ export default function CommentModal({
               >
                 <Ionicons
                   name={item.user_liked ? "heart" : "heart-outline"}
-                  // DEĞİŞİKLİK: Masaüstünde kalp ikonu küçültüldü (12 -> 10)
                   size={scale(isDesktop ? 10 : 18)}
                   color={item.user_liked ? "#FF3B30" : colors.text + "60"}
                 />
@@ -446,7 +418,6 @@ export default function CommentModal({
               {item.likes_count > 0 && (
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Masaüstünde beğeni sayısı küçültüldü (8 -> 7)
                     fontSize: scale(isDesktop ? 7 : 11),
                     color: colors.text + "60",
                     marginTop: scale(2),
@@ -469,13 +440,11 @@ export default function CommentModal({
             >
               <Ionicons
                 name={item.show_replies ? "chevron-up" : "chevron-down"}
-                // DEĞİŞİKLİK: Masaüstünde ok ikonu küçültüldü (10 -> 8)
                 size={scale(isDesktop ? 8 : 16)}
                 color={colors.primary}
               />
               <CustomText
                 style={{
-                  // DEĞİŞİKLİK: Masaüstünde yanıtları göster yazısı küçültüldü (9 -> 8)
                   fontSize: scale(isDesktop ? 8 : 12),
                   color: colors.primary,
                   marginLeft: scale(4),
@@ -523,7 +492,6 @@ export default function CommentModal({
               style={[
                 styles.avatarImage,
                 {
-                  // DEĞİŞİKLİK: Masaüstünde yanıt avatarı küçültüldü (20 -> 16)
                   width: scale(isDesktop ? 16 : 36),
                   height: scale(isDesktop ? 16 : 36),
                   borderRadius: scale(isDesktop ? 8 : 18),
@@ -539,7 +507,7 @@ export default function CommentModal({
               <View style={styles.commentHeader}>
                 <CustomText
                   style={{
-                    fontSize: scale(isDesktop ? 10 : 14), // 11 -> 10
+                    fontSize: scale(isDesktop ? 10 : 14),
                     fontWeight: "600",
                     color: colors.text,
                   }}
@@ -548,7 +516,7 @@ export default function CommentModal({
                 </CustomText>
                 <CustomText
                   style={{
-                    fontSize: scale(isDesktop ? 7 : 11), // 8 -> 7
+                    fontSize: scale(isDesktop ? 7 : 11),
                     color: colors.text + "60",
                     marginLeft: scale(8),
                   }}
@@ -564,7 +532,7 @@ export default function CommentModal({
               <TouchableOpacity onPress={() => handleReplyPress(reply)}>
                 <CustomText
                   style={{
-                    fontSize: scale(isDesktop ? 8 : 12), // 9 -> 8
+                    fontSize: scale(isDesktop ? 8 : 12),
                     color: colors.primary,
                     marginTop: scale(isDesktop ? 1 : 4),
                     fontWeight: "500",
@@ -583,14 +551,14 @@ export default function CommentModal({
               >
                 <Ionicons
                   name={reply.user_liked ? "heart" : "heart-outline"}
-                  size={scale(isDesktop ? 10 : 16)} // 12 -> 10
+                  size={scale(isDesktop ? 10 : 16)}
                   color={reply.user_liked ? "#FF3B30" : colors.text + "60"}
                 />
               </TouchableOpacity>
               {reply.likes_count > 0 && (
                 <CustomText
                   style={{
-                    fontSize: scale(isDesktop ? 7 : 10), // 8 -> 7
+                    fontSize: scale(isDesktop ? 7 : 10),
                     color: colors.text + "60",
                     marginTop: scale(2),
                     textAlign: "center",
@@ -624,13 +592,11 @@ export default function CommentModal({
       borderTopColor: colors.text + "10",
       bottom: isKeyboardVisible ? keyboardHeight : 0,
       paddingHorizontal: 0,
-      // DEĞİŞİKLİK: Masaüstünde girdi kutusunun dikey boşlukları daha da daraltıldı (6 -> 4)
       paddingVertical: scale(isDesktop ? 4 : 12),
     },
   ];
 
-  // DEĞİŞİKLİK: İşlem (Düzenle/Sil) menüsü.
-  // Z-index çakışmasını aşmak için hem masaüstü hem de mobil için her zaman Modal kullanıyoruz.
+  // İşlem (Düzenle/Sil) menüsü.
   const renderActionMenu = () => {
     return (
       <Modal
@@ -650,10 +616,8 @@ export default function CommentModal({
               {
                 backgroundColor: colors.card,
                 borderRadius: scale(12),
-                // DEĞİŞİKLİK: Masaüstü için padding küçültüldü (4 -> 2)
                 padding: scale(isDesktop ? 2 : 8),
               },
-              // DEĞİŞİKLİK: Masaüstü menü genişliği daha da daraltıldı (120 -> 100)
               isDesktop && { width: scale(100), maxWidth: scale(120) },
             ]}
           >
@@ -661,7 +625,6 @@ export default function CommentModal({
               style={[
                 styles.menuItem,
                 {
-                  // DEĞİŞİKLİK: Masaüstü buton padding daraltıldı (6 -> 4)
                   padding: scale(isDesktop ? 4 : 16),
                   borderRadius: scale(8),
                 },
@@ -670,7 +633,6 @@ export default function CommentModal({
             >
               <Ionicons
                 name="pencil-outline"
-                // DEĞİŞİKLİK: İkon boyutu küçültüldü (12 -> 10)
                 size={scale(isDesktop ? 10 : 20)}
                 color={colors.primary}
               />
@@ -678,7 +640,6 @@ export default function CommentModal({
                 style={[
                   styles.menuText,
                   {
-                    // DEĞİŞİKLİK: Metin boyutu küçültüldü (11 -> 10)
                     fontSize: scale(isDesktop ? 10 : 16),
                     color: colors.text,
                     marginLeft: scale(isDesktop ? 4 : 12),
@@ -723,8 +684,7 @@ export default function CommentModal({
     );
   };
 
-  // DEĞİŞİKLİK: Yorum Düzenleme menüsü.
-  // Z-index çakışmasını aşmak için hem masaüstü hem de mobil için Modal kullanıyoruz.
+  // Yorum Düzenleme menüsü.
   const renderEditModal = () => {
     return (
       <Modal
@@ -740,16 +700,13 @@ export default function CommentModal({
               {
                 backgroundColor: colors.card,
                 borderRadius: scale(16),
-                // DEĞİŞİKLİK: Düzenleme modalı padding'i (10 -> 8)
                 padding: scale(isDesktop ? 8 : 20),
               },
-              // DEĞİŞİKLİK: Düzenleme modalı genişliği (240 -> 200)
               isDesktop && { width: scale(200) },
             ]}
           >
             <CustomText
               style={{
-                // DEĞİŞİKLİK: Başlık boyutu (12 -> 11)
                 fontSize: scale(isDesktop ? 11 : 18),
                 color: colors.text,
                 fontWeight: "600",
@@ -765,11 +722,10 @@ export default function CommentModal({
                 {
                   backgroundColor: colors.background,
                   color: colors.text,
-                  // DEĞİŞİKLİK: Girdi boyutu ve padding
-                  fontSize: scale(isDesktop ? 10 : 14), // 11 -> 10
-                  padding: scale(isDesktop ? 4 : 12), // 6 -> 4
+                  fontSize: scale(isDesktop ? 10 : 14),
+                  padding: scale(isDesktop ? 4 : 12),
                   borderRadius: scale(8),
-                  marginBottom: scale(isDesktop ? 4 : 16), // 6 -> 4
+                  marginBottom: scale(isDesktop ? 4 : 16),
                   borderWidth: 1,
                   borderColor: colors.text + "20",
                 },
@@ -786,7 +742,6 @@ export default function CommentModal({
                   styles.editModalButton,
                   {
                     backgroundColor: colors.text + "10",
-                    // DEĞİŞİKLİK: Buton padding (6 -> 4)
                     padding: scale(isDesktop ? 4 : 12),
                     borderRadius: scale(8),
                     flex: 1,
@@ -797,7 +752,6 @@ export default function CommentModal({
               >
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Buton metni boyutu (11 -> 10)
                     fontSize: scale(isDesktop ? 10 : 16),
                     color: colors.text,
                     textAlign: "center",
@@ -844,8 +798,8 @@ export default function CommentModal({
         visible={visible}
         onClose={onClose}
         title="Yorumlar"
-        height="80%" // Mobil yükseklik
-        desktopWidth={scale(280)} // DEĞİŞİKLİK: Masaüstü için yorum penceresi genişliği biraz daha daraltıldı (320 -> 280)
+        height="80%"
+        desktopWidth={scale(280)}
         showCloseButton={true}
         showDragHandle={true}
         closeOnBackdropPress={true}
@@ -884,13 +838,11 @@ export default function CommentModal({
                   <View style={styles.emptyContainer}>
                     <Ionicons
                       name="chatbubble-outline"
-                      // DEĞİŞİKLİK: Masaüstü boş durum ikonu (28 -> 20)
                       size={scale(isDesktop ? 20 : 48)}
                       color={colors.text + "40"}
                     />
                     <CustomText
                       style={{
-                        // DEĞİŞİKLİK: Masaüstü boş durum yazısı (11 -> 10)
                         fontSize: scale(isDesktop ? 10 : 16),
                         color: colors.text + "60",
                         marginTop: scale(12),
@@ -901,7 +853,6 @@ export default function CommentModal({
                     </CustomText>
                     <CustomText
                       style={{
-                        // DEĞİŞİKLİK: Masaüstü boş durum alt yazısı (9 -> 8)
                         fontSize: scale(isDesktop ? 8 : 14),
                         color: colors.text + "40",
                         marginTop: scale(4),
@@ -922,7 +873,6 @@ export default function CommentModal({
                   style={[
                     styles.inputAvatar,
                     {
-                      // DEĞİŞİKLİK: Masaüstü yazı girdi avatarı boyutu (20 -> 18)
                       width: scale(isDesktop ? 18 : 32),
                       height: scale(isDesktop ? 18 : 32),
                       borderRadius: scale(isDesktop ? 9 : 16),
@@ -944,13 +894,13 @@ export default function CommentModal({
                       style={styles.replyIndicator}
                     >
                       <CustomText
-                        style={{ fontSize: scale(10), color: colors.primary }} // 12 -> 10
+                        style={{ fontSize: scale(10), color: colors.primary }}
                       >
                         @{replyTo.username} yanıtla
                       </CustomText>
                       <Ionicons
                         name="close"
-                        size={scale(12)} // 16 -> 12
+                        size={scale(12)}
                         color={colors.text + "60"}
                       />
                     </TouchableOpacity>
@@ -961,10 +911,9 @@ export default function CommentModal({
                       styles.input,
                       {
                         color: colors.text,
-                        // DEĞİŞİKLİK: Masaüstü için girdi metni boyutu (11 -> 10)
                         fontSize: scale(isDesktop ? 10 : 14),
                         fontFamily: "Nunito-Regular",
-                        paddingVertical: scale(isDesktop ? 4 : 8), // 6 -> 4
+                        paddingVertical: scale(isDesktop ? 4 : 8),
                       },
                     ]}
                     placeholder={replyTo ? "Yanıtını yaz..." : "Yorum ekle..."}
@@ -989,7 +938,6 @@ export default function CommentModal({
                 >
                   <Ionicons
                     name="grid-outline"
-                    // DEĞİŞİKLİK: Masaüstü sticker ikonu (14 -> 12)
                     size={scale(isDesktop ? 12 : 24)}
                     color={colors.text + "60"}
                   />
@@ -1003,7 +951,6 @@ export default function CommentModal({
                   >
                     <CustomText
                       style={{
-                        // DEĞİŞİKLİK: Masaüstü gönder butonu (11 -> 10)
                         fontSize: scale(isDesktop ? 10 : 14),
                         color: colors.primary,
                         fontWeight: "600",
@@ -1019,7 +966,6 @@ export default function CommentModal({
         </KeyboardAvoidingView>
       </BottomSheetModal>
 
-      {/* DEĞİŞİKLİK: Modal çakışmalarını önlemek için her zaman Modal içerisinde ve BottomSheet'in dışında çağırılır */}
       {renderActionMenu()}
       {renderEditModal()}
     </>
@@ -1055,7 +1001,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginLeft: 12,
     minWidth: 30,
-    alignSelf: "center", // Dikey ortalama için
+    alignSelf: "center",
   },
   emptyContainer: {
     alignItems: "center",

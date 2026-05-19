@@ -6,6 +6,7 @@ import { useMessages } from "@contexts/MessageContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import { getAvatarSource } from "@utils/avatarUtils";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,29 +18,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 interface ShareToDMModalProps {
   visible: boolean;
@@ -54,7 +32,6 @@ export default function ShareToDMModal({
 }: ShareToDMModalProps) {
   const { user } = useAuth();
   const { colors } = useTheme();
-  // DEĞİŞİKLİK: isDesktop eklendi
   const { scale, isDesktop } = useResponsive();
   const { conversations, fetchConversations, sharePost } = useMessages();
 
@@ -139,13 +116,14 @@ export default function ShareToDMModal({
     }
   };
 
-  const getAvatarSource = (avatarIndex: number) => {
-    try {
-      return allAvatars[avatarIndex % allAvatars.length];
-    } catch (error) {
-      return allAvatars[0];
-    }
-  };
+  // getAvatarSource artık avatarUtils'den geliyor, bu fonksiyona gerek yok
+  // const getAvatarSource = (avatarIndex: number) => {
+  //   try {
+  //     return allAvatars[avatarIndex % allAvatars.length];
+  //   } catch (error) {
+  //     return allAvatars[0];
+  //   }
+  // };
 
   const renderConversationItem = ({ item }: { item: any }) => {
     const isSelected = selectedUserId === item.other_user?.id;
@@ -156,7 +134,6 @@ export default function ShareToDMModal({
           styles.conversationItem,
           {
             backgroundColor: isSelected ? colors.primary + "20" : colors.card,
-            // DEĞİŞİKLİK: Masaüstünde butonlar arası boşluk ve iç boşluk daraltıldı
             marginBottom: scale(isDesktop ? 4 : 8),
             borderRadius: scale(12),
             padding: scale(isDesktop ? 6 : 12),
@@ -174,7 +151,6 @@ export default function ShareToDMModal({
             style={[
               styles.avatar,
               {
-                // DEĞİŞİKLİK: Masaüstünde profil resmi küçültüldü
                 width: scale(isDesktop ? 28 : 50),
                 height: scale(isDesktop ? 28 : 50),
                 borderRadius: scale(isDesktop ? 14 : 25),
@@ -193,7 +169,6 @@ export default function ShareToDMModal({
           <View style={styles.conversationInfo}>
             <CustomText
               style={{
-                // DEĞİŞİKLİK: Masaüstünde kullanıcı adı boyutu küçültüldü
                 fontSize: scale(isDesktop ? 13 : 16),
                 fontWeight: "600",
                 color: colors.text,
@@ -205,7 +180,6 @@ export default function ShareToDMModal({
             {item.last_message && (
               <CustomText
                 style={{
-                  // DEĞİŞİKLİK: Masaüstünde son mesaj yazısı küçültüldü
                   fontSize: scale(isDesktop ? 10 : 13),
                   color: colors.text + "80",
                   marginTop: scale(2),
@@ -241,7 +215,7 @@ export default function ShareToDMModal({
       onClose={onClose}
       title="Gönderiyi Paylaş"
       height="80%"
-      desktopWidth={scale(280)} // DEĞİŞİKLİK: Masaüstünde modal penceresinin genişliği daraltıldı
+      desktopWidth={scale(280)}
       showCloseButton={true}
       showDragHandle={true}
       closeOnBackdropPress={true}
@@ -255,7 +229,6 @@ export default function ShareToDMModal({
             {
               backgroundColor: colors.card,
               borderRadius: scale(12),
-              // DEĞİŞİKLİK: Masaüstünde arama kutusu dikey boşlukları azaltıldı
               marginBottom: scale(isDesktop ? 8 : 16),
               paddingHorizontal: scale(isDesktop ? 8 : 12),
             },
@@ -271,7 +244,6 @@ export default function ShareToDMModal({
               styles.searchInput,
               {
                 color: colors.text,
-                // DEĞİŞİKLİK: Masaüstünde arama metni boyutu ve iç boşluğu küçültüldü
                 fontSize: scale(isDesktop ? 12 : 14),
                 paddingVertical: scale(isDesktop ? 6 : 12),
                 marginLeft: scale(8),
@@ -317,13 +289,11 @@ export default function ShareToDMModal({
               <View style={styles.emptyContainer}>
                 <Ionicons
                   name="chatbubble-outline"
-                  // DEĞİŞİKLİK: Masaüstü için boş durum ikonu küçültüldü
                   size={scale(isDesktop ? 24 : 48)}
                   color={colors.text + "40"}
                 />
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Masaüstü için boş durum yazısı küçültüldü
                     fontSize: scale(isDesktop ? 12 : 16),
                     color: colors.text + "60",
                     marginTop: scale(isDesktop ? 8 : 12),

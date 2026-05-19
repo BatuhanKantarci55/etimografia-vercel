@@ -1,31 +1,9 @@
 import { useTheme } from "@contexts/ThemeContext";
 import { useResponsive } from "@hooks/useResponsive";
+import { getAvatarSource } from "@utils/avatarUtils";
 import { Animated, Dimensions, Image, StyleSheet, View } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 interface UserAvatarSectionProps {
   scrollY: Animated.Value;
@@ -45,7 +23,7 @@ export default function UserAvatarSection({
   const { colors } = useTheme();
   const { scale, isDesktop } = useResponsive();
 
-  const currentAvatar = allAvatars[avatarIndex % allAvatars.length];
+  const currentAvatar = getAvatarSource(avatarIndex);
 
   const mainAvatarSize = scale(isDesktop ? 80 : 100);
   const mainAvatarRadius = mainAvatarSize / 2;

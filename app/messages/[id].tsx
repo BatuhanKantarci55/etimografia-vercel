@@ -7,6 +7,7 @@ import { useMessages } from "@contexts/MessageContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import { getAvatarSource } from "@utils/avatarUtils";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -23,33 +24,9 @@ import {
   View,
 } from "react-native";
 
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
-
 export default function MessageRoomScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
-  // DEĞİŞİKLİK: isDesktop eklendi
   const { scale, isDesktop } = useResponsive();
   const { id } = useLocalSearchParams();
   const conversationId = Array.isArray(id) ? id[0] : id;
@@ -309,9 +286,10 @@ export default function MessageRoomScreen() {
     setCurrentSearchIndex(-1);
   };
 
-  const getAvatarSource = (avatarIndex: number) => {
-    return allAvatars[avatarIndex % allAvatars.length];
-  };
+  // getAvatarSource artık avatarUtils'den geliyor, bu fonksiyona gerek yok
+  // const getAvatarSource = (avatarIndex: number) => {
+  //   return allAvatars[avatarIndex % allAvatars.length];
+  // };
 
   const formatLastSeen = () => {
     return "Çevrimiçi";
@@ -367,7 +345,7 @@ export default function MessageRoomScreen() {
             borderRadius: scale(12),
             padding: scale(isDesktop ? 4 : 8),
           },
-          isDesktop && { width: scale(120), maxWidth: scale(140) }, // DÜZELTME: Arama/temizle menüsü daraltıldı
+          isDesktop && { width: scale(120), maxWidth: scale(140) },
         ]}
       >
         <TouchableOpacity
@@ -452,7 +430,6 @@ export default function MessageRoomScreen() {
               onPress={handleCloseSearch}
               style={[
                 styles.iconContainer,
-                // DEĞİŞİKLİK: Masaüstü için çarpı ikonu ve aralığı daha da daraltıldı (14 -> 12)
                 {
                   width: scale(isDesktop ? 16 : 32),
                   height: scale(isDesktop ? 16 : 32),
@@ -480,7 +457,6 @@ export default function MessageRoomScreen() {
             >
               <Ionicons
                 name="search"
-                // DEĞİŞİKLİK: Masaüstü için büyüteç ikonu daraltıldı (12 -> 10)
                 size={scale(isDesktop ? 10 : 18)}
                 color={colors.text + "60"}
                 style={styles.searchIcon}
@@ -490,7 +466,6 @@ export default function MessageRoomScreen() {
                   styles.searchInput,
                   {
                     color: colors.text,
-                    // DEĞİŞİKLİK: Masaüstü için arama fontu ve dikey padding daraltıldı
                     fontSize: scale(isDesktop ? 10 : 14),
                     paddingVertical: scale(isDesktop ? 1 : 6),
                   },
@@ -507,7 +482,6 @@ export default function MessageRoomScreen() {
               <View style={styles.searchNavContainer}>
                 <CustomText
                   style={{
-                    // DEĞİŞİKLİK: Masaüstü için sonuç sayısı fontu daraltıldı (10 -> 9)
                     fontSize: scale(isDesktop ? 9 : 12),
                     color: colors.text + "60",
                     marginRight: scale(8),
@@ -522,7 +496,6 @@ export default function MessageRoomScreen() {
                 >
                   <Ionicons
                     name="chevron-up"
-                    // DEĞİŞİKLİK: Masaüstü ok ikonu daraltıldı (12 -> 10)
                     size={scale(isDesktop ? 10 : 18)}
                     color={
                       searchResults.length > 0
@@ -538,7 +511,6 @@ export default function MessageRoomScreen() {
                 >
                   <Ionicons
                     name="chevron-down"
-                    // DEĞİŞİKLİK: Masaüstü ok ikonu daraltıldı (12 -> 10)
                     size={scale(isDesktop ? 10 : 18)}
                     color={
                       searchResults.length > 0

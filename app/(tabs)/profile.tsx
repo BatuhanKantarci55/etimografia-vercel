@@ -5,6 +5,8 @@ import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "@hooks/useResponsive";
+import { supabase } from "@lib/supabase";
+import { getBannerSource } from "@utils/bannerUtils";
 import AvatarSection from "components/Profile/AvatarSection";
 import BannerSection from "components/Profile/BannerSection";
 import ProfileHeader from "components/Profile/ProfileHeader";
@@ -21,53 +23,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-// Banner görsellerini import et
-const allBanners = [
-  require("../../assets/images/banners/stars.png"),
-  require("../../assets/images/banners/medusa.png"),
-  require("../../assets/images/banners/pegasus.png"),
-  require("../../assets/images/banners/roses.png"),
-  require("../../assets/images/banners/red_castle.png"),
-  require("../../assets/images/banners/desert.png"),
-  require("../../assets/images/banners/eagle.png"),
-  require("../../assets/images/banners/fairy.png"),
-  require("../../assets/images/banners/fall.png"),
-  require("../../assets/images/banners/flowers.png"),
-  require("../../assets/images/banners/forest.png"),
-  require("../../assets/images/banners/leaves.png"),
-  require("../../assets/images/banners/mountains.png"),
-  require("../../assets/images/banners/ocean.png"),
-  require("../../assets/images/banners/orchid.png"),
-  require("../../assets/images/banners/peacock.png"),
-  require("../../assets/images/banners/phoenix.png"),
-  require("../../assets/images/banners/space.png"),
-  require("../../assets/images/banners/tree.png"),
-  require("../../assets/images/banners/wolf.png"),
-];
-
-// Avatar görsellerini import et
-const allAvatars = [
-  require("../../assets/images/avatars/cat1.jpg"),
-  require("../../assets/images/avatars/cat2.jpg"),
-  require("../../assets/images/avatars/chicken1.png"),
-  require("../../assets/images/avatars/cockatiel1.png"),
-  require("../../assets/images/avatars/cow1.png"),
-  require("../../assets/images/avatars/dolphin1.jpg"),
-  require("../../assets/images/avatars/donkey1.png"),
-  require("../../assets/images/avatars/duck1.png"),
-  require("../../assets/images/avatars/elephant1.jpg"),
-  require("../../assets/images/avatars/fox1.png"),
-  require("../../assets/images/avatars/horse1.png"),
-  require("../../assets/images/avatars/jellyfish1.jpg"),
-  require("../../assets/images/avatars/kakadu1.png"),
-  require("../../assets/images/avatars/octopus1.jpg"),
-  require("../../assets/images/avatars/penguen1.jpg"),
-  require("../../assets/images/avatars/penguen2.jpg"),
-  require("../../assets/images/avatars/pigeon1.png"),
-  require("../../assets/images/avatars/polarbear1.jpg"),
-  require("../../assets/images/avatars/sheep1.png"),
-];
 
 export default function ProfileScreen() {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
@@ -87,13 +42,48 @@ export default function ProfileScreen() {
     profile?.avatar_index || 0,
   );
 
+  // Satın alınan ürünler
+  const [purchasedAvatars, setPurchasedAvatars] = useState<Set<number>>(
+    new Set(),
+  );
+  const [purchasedBanners, setPurchasedBanners] = useState<Set<number>>(
+    new Set(),
+  );
+
+  // Kullanıcının satın aldığı ürünleri getir
+  const fetchUserPurchases = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("user_purchases")
+        .select("item_type, item_index")
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      const avatars = new Set<number>();
+      const banners = new Set<number>();
+
+      data?.forEach((item) => {
+        if (item.item_type === "avatar") avatars.add(item.item_index);
+        else if (item.item_type === "banner") banners.add(item.item_index);
+      });
+
+      setPurchasedAvatars(avatars);
+      setPurchasedBanners(banners);
+    } catch (error) {
+      console.error("Satın alınan ürünler yüklenirken hata:", error);
+    }
+  };
+
   // Veritabanından profil bilgisi asenkron olarak yüklendiğinde anlık olarak arayüze yansıtması için
   useEffect(() => {
     if (profile) {
       setSelectedBannerIndex(profile.banner_index || 0);
       setSelectedAvatarIndex(profile.avatar_index || 0);
     }
-  }, [profile?.banner_index, profile?.avatar_index]);
+    fetchUserPurchases();
+  }, [profile?.banner_index, profile?.avatar_index, user]);
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const profileTabsRef = useRef<ProfileTabsRef>(null);
@@ -102,6 +92,7 @@ export default function ProfileScreen() {
     setRefreshing(true);
     if (user) {
       await refreshProfile();
+      await fetchUserPurchases();
       Alert.alert("✅ Sayfa Yenilendi", "Profil bilgileriniz güncellendi.");
     }
     setRefreshing(false);
@@ -118,7 +109,7 @@ export default function ProfileScreen() {
   };
 
   // Seçili banner
-  const currentBanner = allBanners[selectedBannerIndex];
+  const currentBanner = getBannerSource(selectedBannerIndex);
 
   // Banner opaklığı için interpolasyon
   const bannerOpacity = scrollY.interpolate({
@@ -356,6 +347,7 @@ export default function ProfileScreen() {
               bannerOpacity={bannerOpacity}
               selectedBannerIndex={selectedBannerIndex}
               onBannerChange={handleBannerChange}
+              purchasedBanners={purchasedBanners}
             />
 
             <AvatarSection
@@ -365,6 +357,7 @@ export default function ProfileScreen() {
               avatarTranslateY={avatarTranslateY}
               selectedAvatarIndex={selectedAvatarIndex}
               onAvatarChange={handleAvatarChange}
+              purchasedAvatars={purchasedAvatars}
             />
           </View>
 

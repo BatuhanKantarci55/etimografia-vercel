@@ -1,3 +1,4 @@
+// app/(tabs)/index.tsx
 import ArenaListModal from "@components/Arena/ArenaListModal";
 import AuthRequiredModal from "@components/AuthRequiredModal";
 import BackgroundImage from "@components/BackgroundImage";
@@ -28,12 +29,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-// Örnek veriler (artık sadece para ve mücevher için)
-const mockUserData = {
-  gameMoney: 0,
-  gameGems: 0,
-};
 
 export default function HomeScreen() {
   const { colors, themeMode } = useTheme();
@@ -489,10 +484,7 @@ export default function HomeScreen() {
         stickyHeaderIndices={[0]}
       >
         <View>
-          <HomeTopBar
-            gameMoney={mockUserData.gameMoney}
-            gameGems={mockUserData.gameGems}
-          />
+          <HomeTopBar />
         </View>
 
         <HomeInfoBoxes />
